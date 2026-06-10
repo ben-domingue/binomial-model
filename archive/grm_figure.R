@@ -1,0 +1,73 @@
+##grm simulation, analysis by binomial and grmgpcm
+source("/home/bdomingu/Dropbox/projects/binomial_model/src/00_funs.R")
+    
+
+
+##simulated data
+ni<-20 #number of items
+n<-1000 #number of people
+library(mirt)
+a<-matrix(rep(1.7,ni),ncol=1)
+##gpcm
+set.seed(10101)
+d<-list()
+for (i in 1:20) d[[i]]<-rev(sort(runif(4,min=-.75,max=.75)))+rnorm(1,sd=.5)
+d<-do.call("rbind",d)
+#d<-cbind(0,d)
+th<-rnorm(1000)
+x <- simdata(a, d,
+             Theta=th,
+             itemtype = 'graded') 
+x<-data.frame(x)
+
+m<-mirt(x,1,'graded')
+
+L<-list()
+for (i in 1:ncol(x)) L[[i]]<-data.frame(id=1:nrow(x),item=names(x)[i],resp=x[,i])
+df<-data.frame(do.call("rbind",L))
+m1<-binom(df)
+
+##
+#pdf("/home/bdomingu/Dropbox/Apps/Overleaf/binomial_model/grm_compare.pdf",width=7,height=2)
+par(mgp=c(2,1,0),mar=c(3,3,1,1))
+layout(matrix(c(1,1,2),nrow=1))
+itemnum<-1
+co<-coef(m,simplify=TRUE)$item
+co1<-coef(m1,simplify=TRUE)$item
+th<-seq(-5,5,length.out=1000)
+##crf-grm
+item<-extract.item(m,itemnum)
+p<-probtrace(item,th)
+plot(NULL,ylim=c(0,1),xlab=expression(theta),ylab='Pr(x=k|theta)',xlim=c(-3,3))
+for (i in 1:ncol(p)) lines(th,p[,i],lty=2)
+##crf-binom
+nm<-rownames(co)[itemnum]
+ii<-grep(paste(nm,'...',sep=''),rownames(co1),fixed=TRUE)
+p<-list()
+for (i in ii) {
+    item<-extract.item(m1,i)
+    p[[as.character(i)]]<-expected.item(item,th)
+}
+K<-length(p)
+p2<-list()
+p<-p[[1]]
+for (k in 0:K) p2[[k+1]]<-choose(K,k)*p^k*(1-p)^(K-k)
+for (i in 1:length(p2)) lines(th,p2[[i]],col='red')
+##
+#legend("left",bty='n',legend=c("grm","binomial"),fill=c("black","red"))
+
+##expected
+item<-extract.item(m,itemnum)
+y<-expected.item(item,th)
+plot(th,y,type='l',lwd=2,lty=2,xlab=expression(theta),ylab='E(x|theta)',xlim=c(-3,3))
+nm<-rownames(co)[itemnum]
+ii<-grep(paste(nm,'...',sep=''),rownames(co1),fixed=TRUE)
+p<-list()
+for (i in ii) {
+    item<-extract.item(m1,i)
+    p[[as.character(i)]]<-expected.item(item,th)
+}
+y.bin<-rowSums(do.call("cbind",p))
+lines(th,y.bin,col='red',lwd=2)
+#dev.off()
+

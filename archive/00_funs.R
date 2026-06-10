@@ -1,8 +1,4 @@
-##gpcm simulation, analysis by binomial and gpcm
-
-################################################################
-
-binom<-function(df,compare.model='graded') {
+binom<-function(df) {
     reform<-function(df) {
         L<-split(df,df$item)
         for (i in 1:length(L)) {
@@ -46,33 +42,18 @@ CONSTRAIN=",mm)
     ##binomial model
     library(mirt)
     m<-mirt(x,model=mm,itemtype="2PL")
+    m
+}
+
+binom.compare<-function(df,compare.model='graded',return.id=FALSE) {
+    m<-binom(df)
     ##original model
     x2<-irw::long2resp(df)
+    id<-x2$id
     x2$id<-NULL
     m2<-mirt(x2,1,compare.model)
     L<-list(binom=m,m2)
     names(L)[2]<-compare.model
+    if (return.id) L$id<-id
     L
 }
-
-sim<-function(ni,n,K,delta=.5) {
-    ##simulated data
-    library(mirt)
-    a<-matrix(rep(1.7,ni),ncol=1)
-    ##gpcm
-    d<-list()
-    for (i in 1:ni) d[[i]]<-runif(K-1,min=-1*delta,max=delta)+rnorm(1,sd=.5)
-    d<-do.call("rbind",d)
-    d<-cbind(0,d)
-    th<-rnorm(n)
-    x <- simdata(a, d,
-                 Theta=th,
-                 itemtype = 'gpcm') 
-    x<-data.frame(x)
-    L<-list()
-    for (i in 1:ncol(x)) L[[i]]<-data.frame(id=1:nrow(x),item=names(x)[i],resp=x[,i])
-    df<-data.frame(do.call("rbind",L))
-    df
-}
-x<-sim(20,1000,3)
-binom(x)
