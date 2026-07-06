@@ -93,14 +93,18 @@ make_dist_plot <- function(g, erf_ref_fn, b_ref_row, erf_fn, ap,
   }
   p <- ggplot(g, aes(x = b1, y = b2, fill = sqrt(dist))) +
     geom_tile() +
+    geom_contour(data = g, aes(x = b1, y = b2, z = sqrt(dist)),
+                inherit.aes = FALSE, breaks = contour_breaks,
+                color = "grey30", linewidth = 0.3) +
     { if (!is.na(b_ref_row[2]))
         annotate("point", x = b_ref_row[1], y = b_ref_row[2],
                  shape = 4, size = 3.5, color = "black", stroke = 1.3)
       else list() } +
-    scale_fill_gradient(low = "white", high = "red",
-                        limits = c(0, scale_max),
-                        name = "RMISE",
-                        guide = if (show_legend) "colourbar" else "none") +
+    scale_fill_stepsn(colours = viridis_pal,
+                       breaks = contour_breaks,
+                       limits = c(0, scale_max),
+                       name = "RMISE",
+                       guide = if (show_legend) guide_colorsteps() else "none") +
     labs(title = sprintf("%s  a'=%.1f", model_name, ap),
          x = expression(b[1]*"'"),
          y = if (show_yaxis) expression(b[2]*"'") else NULL) +
@@ -111,7 +115,7 @@ make_dist_plot <- function(g, erf_ref_fn, b_ref_row, erf_fn, ap,
   if (show_isoerf_contour && !is.null(contour_level)) {
     p <- p + geom_contour(data = g, aes(x = b1, y = b2, z = sqrt(dist)),
                           inherit.aes = FALSE, breaks = contour_level,
-                          color = "steelblue", linewidth = 0.9, linetype = "dashed")
+                          color = "red", linewidth = 1, linetype = "dashed")
   }
   if (!is.null(highlight)) {
     p <- p +
@@ -190,9 +194,11 @@ make_dist_plot_1d <- function(b1_vals, erf_ref_fn, b_ref, erf_fn, ap,
   p <- ggplot(g, aes(x = b1, y = 0, fill = sqrt(dist))) +
     geom_tile(height = 1) +
     annotate("point", x = b_ref, y = 0, shape = 4, size = 4.5, color = "black", stroke = 1.6) +
-    scale_fill_gradient(low = "white", high = "red", limits = c(0, scale_max),
-                        name = "RMISE",
-                        guide = if (show_legend) "colourbar" else "none") +
+    scale_fill_stepsn(colours = viridis_pal,
+                       breaks = contour_breaks,
+                       limits = c(0, scale_max),
+                       name = "RMISE",
+                       guide = if (show_legend) guide_colorsteps() else "none") +
     scale_y_continuous(limits = c(-0.5, 0.5), expand = c(0, 0)) +
     labs(title = sprintf("%s  a'=%.1f", model_name, ap),
          x = expression(b[1]*"'"), y = NULL) +
@@ -205,11 +211,11 @@ make_dist_plot_1d <- function(b1_vals, erf_ref_fn, b_ref, erf_fn, ap,
       band_range <- range(in_band)
       p <- p +
         annotate("segment", x = band_range[1], xend = band_range[1],
-                 y = -0.5, yend = 0.5, color = "steelblue",
-                 linewidth = 0.9, linetype = "dashed") +
+                 y = -0.5, yend = 0.5, color = "red",
+                 linewidth = 1, linetype = "dashed") +
         annotate("segment", x = band_range[2], xend = band_range[2],
-                 y = -0.5, yend = 0.5, color = "steelblue",
-                 linewidth = 0.9, linetype = "dashed")
+                 y = -0.5, yend = 0.5, color = "red",
+                 linewidth = 1, linetype = "dashed")
     }
   }
   if (!is.null(highlight)) {
@@ -249,6 +255,11 @@ for (model in c("GRM", "GPCM", "Binomial")) {
 
 scale_max <- max(sqrt(unlist(lapply(cached, function(x) c(x$g07$dist, x$g15$dist)))))
 cat(sprintf("Global scale max (sqrt dist): %.4f\n", scale_max))
+
+# ---- Discrete contour bands (alternative to continuous gradient) ----
+contour_breaks <- pretty(c(0, scale_max), n = 8)
+contour_breaks <- contour_breaks[contour_breaks >= 0 & contour_breaks <= scale_max]
+viridis_pal <- hcl.colors(9, "YlOrRd", rev = TRUE)
 
 # ---- Common near-isoERF threshold ----
 # A single absolute ERF-distance threshold, shared across every panel (all
@@ -316,6 +327,6 @@ p_final <- (rows$GRM / rows$GPCM / rows$Binomial) +
                   plot.subtitle = element_text(size = 12))
   )
 
-ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/src/fig_isoerf_distance2.pdf",
+ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/src/fig_isoerf_distance2_altcontour.pdf",
        p_final, width = 15, height = 16)
 cat("saved\n")
