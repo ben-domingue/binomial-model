@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Interactive Supplement: Binomial Approximations to Polytomous IRT Models</title>
+<title>Interactive Supplement: The Binomial Approximation for Polytomous IRT Models</title>
 <style>
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
@@ -66,14 +66,18 @@
 </head>
 <body>
 
-<h1>Interactive Supplement: Binomial Approximations to Polytomous IRT Models</h1>
+<h1>Interactive Supplement</h1>
 
 <p>
   This supplement provides interactive visualizations accompanying the paper
-  <em>"Binomial Approximations to Polytomous Item Response Models"</em> by Ben Domingue et al.
-  The paper examines when and why binomial approximations to the GPCM and GRM succeed or fail,
-  with particular attention to the role of threshold structure, link function choice, and the
-  geometry of the expected response function (ERF).
+  <em>&ldquo;The role of threshold structure and the link function in the performance of the
+  binomial approximation for modeling polytomous responses&rdquo;</em> by Benjamin W. Domingue,
+  Yiqing Liu, Sanford Student, and Klint Kanopka. Polytomous IRT models such as the GPCM and GRM
+  use a separate threshold parameter for each response category boundary; the binomial
+  approximation replaces those thresholds with a single link function. The paper decomposes the
+  resulting approximation error into two sources &mdash; misfit in the link function and misfit
+  in threshold structure &mdash; and shows, across two simulation studies and a large-scale
+  empirical evaluation, that threshold structure is the dominant source of predictive loss.
 </p>
 
 <h2>Widgets</h2>
@@ -88,11 +92,19 @@
     </span>
   </li>
   <li>
-    <a href="gpcm-binomial-report.html">Binomial approximations to the GPCM: a simulation study</a>
+    <a href="threshold-structure-explorer.html">Threshold independence: GRM, GPCM, and Binomial</a>
     <span class="desc">
-      A full simulation report comparing GPCM, GRM, PCM, and binomial approximation models under
-      both a GPCM-correct data-generating process and a fully nonparametric one. Includes
-      interactive widgets for exploring threshold spacing and per-category likelihood loss.
+      Switch between models and drag the threshold sliders to compare how much independent
+      control each model has over its category boundaries &mdash; and how the binomial's single
+      link function locks them together.
+    </span>
+  </li>
+  <li>
+    <a href="category-loss-explorer.html">Per-category prediction loss under threshold asymmetry</a>
+    <span class="desc">
+      Adjust ability, threshold asymmetry, number of categories, and discrimination to see where
+      a binomial approximation's category-level prediction loss concentrates, even when its
+      expected response function matches the GPCM exactly.
     </span>
   </li>
 </ul>

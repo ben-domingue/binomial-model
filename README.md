@@ -1,10 +1,12 @@
-# Binomial Approximations to Polytomous IRT Models
+# The Binomial Approximation for Polytomous IRT Models
 
-This repository contains the code for the paper *"Binomial Approximations to
-Polytomous Item Response Models"* by Ben Domingue et al. The paper examines
-when and why approximating the GPCM and GRM with a binomial response model
-succeeds or fails, focusing on the role of threshold structure, link function
-choice, and the shape of the expected response function (ERF).
+This repository contains the code for the paper *"The role of threshold
+structure and the link function in the performance of the binomial
+approximation for modeling polytomous responses"* by Benjamin W. Domingue,
+Yiqing Liu, Sanford Student, and Klint Kanopka. The paper examines when and
+why approximating the GPCM and GRM with a binomial response model succeeds or
+fails, decomposing the approximation error into misfit in the link function
+and misfit in threshold structure.
 
 ## Interactive supplement
 

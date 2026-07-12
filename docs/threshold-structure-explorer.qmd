@@ -1,0 +1,190 @@
+---
+title: "Threshold Independence: GRM, GPCM, and Binomial"
+format:
+  html:
+    self-contained: true
+    toc: false
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+::: {style="margin-bottom:1.5em"}
+[← Back to home](index.html){style="display:inline-flex;align-items:center;gap:5px;font-size:0.8em;color:#555;text-decoration:none;padding:4px 10px;border:0.5px solid #ccc;border-radius:4px;font-family:system-ui,-apple-system,sans-serif"}
+:::
+
+Switch between models and drag the threshold sliders to compare how much independent control each has over its category boundaries.
+
+```{ojs}
+//| echo: false
+viewof activeModel = Inputs.radio(["GRM", "GPCM", "Binomial"], {
+  label: "Model",
+  value: "GRM"
+})
+
+viewof bs_raw = Inputs.form({
+  b1: Inputs.range([-3, 3], { label: "b₁", step: 0.05, value: -1.5 }),
+  b2: Inputs.range([-3, 3], { label: "b₂", step: 0.05, value: -0.5 }),
+  b3: Inputs.range([-3, 3], { label: "b₃", step: 0.05, value:  0.5 }),
+  b4: Inputs.range([-3, 3], { label: "b₄", step: 0.05, value:  1.5 }),
+  a:  Inputs.range([0.25, 3], { label: "a", step: 0.05, value: 1.2 })
+})
+```
+
+```{ojs}
+//| echo: false
+GAP = 0.05
+
+bs = {
+  let { b1, b2, b3, b4 } = bs_raw;
+  if (activeModel === "GRM") {
+    b2 = Math.max(b2, b1 + GAP);
+    b3 = Math.max(b3, b2 + GAP);
+    b4 = Math.max(b4, b3 + GAP);
+  }
+  return [b1, b2, b3, b4];
+}
+
+a_val = bs_raw.a
+
+function logis(x) { return 1 / (1 + Math.exp(-x)); }
+
+function bc(n, k) {
+  if (k > n) return 0;
+  let r = 1;
+  for (let i = 0; i < k; i++) r = r * (n - i) / (i + 1);
+  return r;
+}
+
+K2 = 5
+TH = Array.from({ length: 201 }, (_, i) => -4 + i * 8 / 200)
+COLORS = ["#2166ac", "#1b7837", "#d6604d", "#762a83", "#e6550d"]
+
+function grmCRF(th, a, b) {
+  const bounds = [1, ...b.map(bk => logis(a * (th - bk))), 0];
+  return Array.from({ length: K2 }, (_, k) => bounds[k] - bounds[k + 1]);
+}
+
+function gpcmCRF(th, a, b) {
+  let terms = [1], denom = 1;
+  for (let k = 0; k < K2 - 1; k++) {
+    let cum = 0;
+    for (let j = 0; j <= k; j++) cum += a * (th - b[j]);
+    const e = Math.exp(cum);
+    terms.push(e);
+    denom += e;
+  }
+  return terms.map(t => t / denom);
+}
+
+function binomCRF(th, a, b) {
+  const p = logis(a * (th - b[0]));
+  return Array.from({ length: K2 }, (_, k) => bc(K2 - 1, k) * Math.pow(p, k) * Math.pow(1 - p, K2 - 1 - k));
+}
+
+function getCRF(th, a, b) {
+  if (activeModel === "GRM")  return grmCRF(th, a, b);
+  if (activeModel === "GPCM") return gpcmCRF(th, a, b);
+  return binomCRF(th, a, b);
+}
+
+function getBound(th, ki, a, b) {
+  if (activeModel === "GRM")  return logis(a * (th - b[ki]));
+  if (activeModel === "GPCM") {
+    const ps = gpcmCRF(th, a, b);
+    return ps.slice(ki + 1).reduce((s, p) => s + p, 0);
+  }
+  const p = logis(a * (th - b[0]));
+  let s = 0;
+  for (let j = ki + 1; j < K2; j++) s += bc(K2 - 1, j) * Math.pow(p, j) * Math.pow(1 - p, K2 - 1 - j);
+  return s;
+}
+
+gridData2 = TH.map(th => {
+  const crf = getCRF(th, a_val, bs);
+  return {
+    th,
+    erf: crf.reduce((s, p, k) => s + k * p, 0),
+    ...Object.fromEntries(crf.map((p, k) => [`crf${k}`, p])),
+    ...Object.fromEntries(Array.from({ length: K2 - 1 }, (_, ki) => [`bound${ki}`, getBound(th, ki, a_val, bs)]))
+  };
+})
+
+crossings2 = (activeModel !== "Binomial")
+  ? bs.map((b, ki) => ({ th: b, prob: 0.5, ki }))
+  : []
+
+boundPlot2 = {
+  const marks = [
+    Plot.ruleY([0.5], { stroke: "#bbb", strokeDasharray: "3,2" }),
+    ...Array.from({ length: K2 - 1 }, (_, ki) =>
+      Plot.line(gridData2, {
+        x: "th", y: `bound${ki}`,
+        stroke: COLORS[ki], strokeWidth: 2,
+        strokeDasharray: activeModel === "Binomial" && ki > 0 ? "5,3" : null
+      })
+    ),
+    ...(crossings2.length
+      ? [Plot.dot(crossings2, {
+          x: "th", y: "prob",
+          symbol: "times", r: 5, strokeWidth: 2,
+          stroke: d => COLORS[d.ki]
+        })]
+      : [])
+  ];
+  return Plot.plot({
+    width: 320, height: 200, marginLeft: 48,
+    x: { label: "θ", tickValues: [-2, -1, 0, 1, 2] },
+    y: { label: "P(X ≥ k | θ)", domain: [0, 1] },
+    marks
+  });
+}
+
+crfPlot2 = Plot.plot({
+  width: 320, height: 200, marginLeft: 48,
+  x: { label: "θ", tickValues: [-2, -1, 0, 1, 2] },
+  y: { label: "P(X = k | θ)", domain: [0, 1] },
+  marks: Array.from({ length: K2 }, (_, k) =>
+    Plot.line(gridData2, { x: "th", y: `crf${k}`, stroke: COLORS[k], strokeWidth: 2 })
+  )
+})
+
+erfPlot2 = Plot.plot({
+  width: 320, height: 200, marginLeft: 48,
+  x: { label: "θ", tickValues: [-2, -1, 0, 1, 2] },
+  y: { label: "E[X | θ]", domain: [0, K2 - 1] },
+  marks: [
+    Plot.line(gridData2, { x: "th", y: "erf", stroke: "#333", strokeWidth: 2.5 })
+  ]
+})
+```
+
+```{ojs}
+//| echo: false
+caption2 = ({
+  "GRM":     "× marks the b_k where each boundary P(X≥k|θ) = 0.5 — the free threshold location. GRM thresholds must stay ordered (b₁ < b₂ < b₃ < b₄); sliders clamp at their neighbours. Slide any b_k to shift only that boundary independently.",
+  "GPCM":    "GPCM step difficulties: the b_k where adjacent category probability curves intersect. All four can be moved freely and independently — including past each other (disordered thresholds are allowed under the GPCM).",
+  "Binomial":"Only b₁ is free. The other boundary curves (dashed) are fully determined by the binomial CDF given the single location b₁ — they cannot be moved independently regardless of how b₁ is set."
+})[activeModel]
+
+html`
+<div style="font-family:inherit">
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:1rem;align-items:start">
+    <div>
+      <p style="font-size:0.8em;font-weight:600;color:#555;margin:0 0 4px">Boundary / threshold functions</p>
+      ${boundPlot2}
+    </div>
+    <div>
+      <p style="font-size:0.8em;font-weight:600;color:#555;margin:0 0 4px">Category response functions</p>
+      ${crfPlot2}
+    </div>
+    <div>
+      <p style="font-size:0.8em;font-weight:600;color:#555;margin:0 0 4px">Expected response function</p>
+      ${erfPlot2}
+    </div>
+  </div>
+  <p style="font-size:0.78em;color:#666;margin:0;line-height:1.5">${caption2}</p>
+</div>
+`
+```

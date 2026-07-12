@@ -1,0 +1,182 @@
+---
+title: "Per-Category Prediction Loss Under Threshold Asymmetry"
+format:
+  html:
+    self-contained: true
+    toc: false
+execute:
+  echo: false
+  message: false
+  warning: false
+---
+
+::: {style="margin-bottom:1.5em"}
+[← Back to home](index.html){style="display:inline-flex;align-items:center;gap:5px;font-size:0.8em;color:#555;text-decoration:none;padding:4px 10px;border:0.5px solid #ccc;border-radius:4px;font-family:system-ui,-apple-system,sans-serif"}
+:::
+
+Adjust θ, asymmetry $s$, categories $K$, and discrimination $a$ to see how threshold spacing shapes the mismatch between the GPCM and its best-fitting binomial (NP spline) approximation, category by category.
+
+```{ojs}
+viewof theta = Inputs.range([-3, 3], {label: "θ (ability)", step: 0.05, value: 0.5})
+viewof asym  = Inputs.range([-Math.log(8), Math.log(8)],
+                 {label: "s (asymmetry)", step: 0.05, value: Math.log(8)})
+viewof K     = Inputs.range([3, 7], {label: "K (categories)", step: 1, value: 5})
+viewof a     = Inputs.range([0.5, 2.5], {label: "a (discrimination)", step: 0.05, value: 1.5})
+```
+
+```{ojs}
+function makeThresholds(K, asym) {
+  const n = K - 1, range = 3.0;
+  if (Math.abs(asym) < 1e-9 || n <= 2)
+    return Array.from({length: n}, (_, i) => -range/2 + i * range / (n - 1));
+  const weights = Array.from({length: n - 1}, (_, i) => Math.exp(asym * i / (n - 2)));
+  const ws = weights.reduce((a, b) => a + b, 0);
+  const gaps = weights.map(w => w / ws * range);
+  const b = [-range / 2];
+  for (let i = 0; i < n - 2; i++) b.push(b[b.length - 1] + gaps[i]);
+  b.push(b[n - 2] + gaps[n - 2]);
+  return b;
+}
+
+function gpcmPr(theta, a, b) {
+  const Kl = b.length + 1;
+  const ln = new Array(Kl).fill(0);
+  for (let k = 1; k < Kl; k++) ln[k] = ln[k-1] + a * (theta - b[k-1]);
+  const mx = Math.max(...ln);
+  const ex = ln.map(v => Math.exp(v - mx));
+  const sm = ex.reduce((a, b) => a + b, 0);
+  return ex.map(v => v / sm);
+}
+
+function dbinom(k, n, p) {
+  if (p <= 0) return k === 0 ? 1 : 0;
+  if (p >= 1) return k === n ? 1 : 0;
+  let lc = 0;
+  for (let i = 0; i < k; i++) lc += Math.log(n - i) - Math.log(i + 1);
+  return Math.exp(lc + k * Math.log(p) + (n - k) * Math.log(1 - p));
+}
+
+function npBinomPr(theta, a, b, K) {
+  const gp = gpcmPr(theta, a, b);
+  const mean = gp.reduce((s, p, k) => s + p * k, 0);
+  const phat = mean / (K - 1);
+  return Array.from({length: K}, (_, k) => dbinom(k, K-1, phat));
+}
+
+function safeLog(p) { return p > 1e-15 ? Math.log(p) : -35; }
+
+thetaGrid = Array.from({length: 121}, (_, i) => -3 + i * 0.05)
+thresholds = makeThresholds(K, asym)
+
+gridData = thetaGrid.map(th => {
+  const gp = gpcmPr(th, a, thresholds);
+  const np = npBinomPr(th, a, thresholds, K);
+  return { th, gp, np,
+           erfG: gp.reduce((s, p, k) => s + p * k, 0),
+           erfN: np.reduce((s, p, k) => s + p * k, 0) };
+})
+
+pointData = {
+  const gp = gpcmPr(theta, a, thresholds);
+  const np = npBinomPr(theta, a, thresholds, K);
+  const meanG = gp.reduce((s, p, k) => s + p * k, 0);
+  const meanN = np.reduce((s, p, k) => s + p * k, 0);
+  const dll   = gp.reduce((s, p, k) => s + p * (safeLog(gp[k]) - safeLog(np[k])), 0);
+  const dllK  = gp.map((_, k) => safeLog(gp[k]) - safeLog(np[k]));
+  return { gp, np, meanG, meanN, dll, dllK };
+}
+
+CRF_COLORS = ["#185FA5","#1D9E75","#BA7517","#C53A35","#7F77DD","#5DCAA5","#E24B4A"]
+CRF_DASH   = [null,[4,3],[2,3],[4,2,2,2],[6,2],[3,3],[5,2]]
+
+erfPlot = Plot.plot({
+  width: 340, height: 200, marginLeft: 45,
+  x: {label: "θ", tickValues: [-2,-1,0,1,2]},
+  y: {label: "E[X | θ]", domain: [0, K - 1]},
+  marks: [
+    Plot.ruleX([theta], {stroke: "#888", strokeDasharray: "3,2", strokeWidth: 1.2}),
+    Plot.line(gridData, {x: "th", y: "erfG", stroke: "#333", strokeWidth: 2}),
+    Plot.line(gridData, {x: "th", y: "erfN", stroke: "#C53A35",
+                         strokeWidth: 2, strokeDasharray: "5,3"})
+  ]
+})
+
+crfPlot = {
+  const marks = [Plot.ruleX([theta], {stroke:"#888", strokeDasharray:"3,2", strokeWidth:1.2})];
+  for (let k = 0; k < K; k++) {
+    marks.push(Plot.line(gridData, {x:"th", y: d => d.gp[k],
+      stroke: CRF_COLORS[k % CRF_COLORS.length], strokeWidth: 1.8}));
+    marks.push(Plot.line(gridData, {x:"th", y: d => d.np[k],
+      stroke: CRF_COLORS[k % CRF_COLORS.length], strokeWidth: 1.5,
+      strokeDasharray: (CRF_DASH[k % CRF_DASH.length] ?? [4,3]).join(",")}));
+  }
+  return Plot.plot({width:340, height:210, marginLeft:45,
+    x:{label:"θ", tickValues:[-2,-1,0,1,2]},
+    y:{label:"P(X = k | θ)", domain:[0,1]}, marks});
+}
+
+probPlot = {
+  const rows = Array.from({length: K}, (_, k) => k).flatMap(k => [
+    {k: String(k), prob: pointData.gp[k], model: "GPCM"},
+    {k: String(k), prob: pointData.np[k], model: "NP spline"}
+  ]);
+  return Plot.plot({
+    width: 300, height: 230, marginLeft: 45,
+    fx: {label: "k", tickFormat: d => d},
+    x: {axis: null},
+    y: {label: "P(X = k | θ)"},
+    color: {domain: ["GPCM", "NP spline"], range: ["#444", "#C53A35"], legend: true},
+    marks: [
+      Plot.barY(rows, {x: "model", y: "prob", fill: "model", fx: "k"}),
+      Plot.ruleY([0])
+    ]
+  });
+}
+
+dllPlot = Plot.plot({
+  width: 300, height: 230, marginLeft: 50,
+  x: {label: "k", domain: Array.from({length:K}, (_,k) => String(k))},
+  y: {label: "log P_GPCM(k) − log P_NP(k)"},
+  color: {domain:["GPCM wins","NP wins"], range:["#185FA5","#9E2A2A"], legend:true},
+  marks: [
+    Plot.barY(
+      Array.from({length:K}, (_,k) => ({
+        k: String(k), dll: pointData.dllK[k],
+        sign: pointData.dllK[k] >= 0 ? "GPCM wins" : "NP wins"
+      })),
+      {x:"k", y:"dll", fill:"sign", insetLeft:2, insetRight:2}
+    ),
+    Plot.ruleY([0])
+  ]
+})
+```
+
+```{ojs}
+html`<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; align-items:start;">
+  <div>
+    <p style="font-size:0.8em;font-weight:500;color:#555;margin:0 0 4px;">Expected response functions</p>
+    ${erfPlot}
+    <p style="font-size:0.8em;font-weight:500;color:#555;margin:16px 0 4px;">Category response functions</p>
+    ${crfPlot}
+    <p style="font-size:0.75em;color:#777;margin:4px 0 0;">Solid = GPCM &nbsp;·&nbsp; Dashed = NP spline &nbsp;·&nbsp; Colours index k</p>
+  </div>
+  <div>
+    <p style="font-size:0.8em;font-weight:500;color:#555;margin:0 0 4px;">P(X = k | θ = ${theta.toFixed(2)})</p>
+    ${probPlot}
+    <table style="font-size:0.78em;border-collapse:collapse;margin-top:8px;width:100%">
+      <tr><td style="padding:2px 8px 2px 0;color:#555;">E[X|θ] GPCM</td>
+          <td style="padding:2px 0;font-variant-numeric:tabular-nums;">${pointData.meanG.toFixed(3)}</td></tr>
+      <tr><td style="padding:2px 8px 2px 0;color:#555;">E[X|θ] NP spline</td>
+          <td style="padding:2px 0;font-variant-numeric:tabular-nums;">${pointData.meanN.toFixed(3)}</td></tr>
+      <tr><td style="padding:2px 8px 2px 0;color:#555;">Avg ΔLL (GPCM − NP)</td>
+          <td style="padding:2px 0;font-variant-numeric:tabular-nums;">${(pointData.dll >= 0 ? "+" : "") + pointData.dll.toFixed(3)}</td></tr>
+      <tr><td style="padding:2px 8px 2px 0;color:#555;">Thresholds</td>
+          <td style="padding:2px 0;">${thresholds.map(b => b.toFixed(2)).join(", ")}</td></tr>
+    </table>
+  </div>
+  <div>
+    <p style="font-size:0.8em;font-weight:500;color:#555;margin:0 0 4px;">Per-category ΔLL at θ = ${theta.toFixed(2)}</p>
+    ${dllPlot}
+  </div>
+</div>`
+```
