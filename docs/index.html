@@ -84,11 +84,27 @@
 
 <ul class="widget-list">
   <li>
-    <a href="erf-crf-explorer.html">Within-model ERF/CRF degeneracy explorer</a>
+    <a href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
     <span class="desc">
-      Explore how different parameter configurations within the GRM, GPCM, and Binomial models
-      produce similar expected response functions (ERFs) while generating distinct category
-      response functions (CRFs). Includes isoERF distance heatmaps and a CRF editor.
+      Compare two parameter configurations within the same model (GRM, GPCM, or Binomial) to see
+      when different configurations produce identical or near-identical expected response
+      functions (ERFs) despite different category response functions (CRFs).
+    </span>
+  </li>
+  <li>
+    <a href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
+    <span class="desc">
+      Heatmaps of ERF distance around a reference threshold configuration for the GRM and GPCM,
+      showing how quickly identifiability sharpens or degrades as thresholds move away from the
+      reference.
+    </span>
+  </li>
+  <li>
+    <a href="crf-editor.html">CRF editor</a>
+    <span class="desc">
+      Drag category response curves up or down, seeded from the GRM, GPCM, or Binomial model,
+      while adjacent categories compensate algebraically to keep the expected response function
+      exactly fixed.
     </span>
   </li>
   <li>

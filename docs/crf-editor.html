@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRF Editor</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:16px 20px}
+.page-header{max-width:900px;margin:0 auto 18px auto;padding-bottom:12px;border-bottom:1px solid #e0e0e0}
+.page-header h1{font-size:16px;font-weight:600;margin-bottom:4px}
+.page-header p{font-size:12px;color:#555;line-height:1.5}
+.page-header a{color:#378ADD;text-decoration:none}
+.page-header a:hover{text-decoration:underline}
+.back-home{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#555;text-decoration:none;padding:4px 10px;border:0.5px solid #ccc;border-radius:4px;margin-bottom:10px}
+.back-home:hover{background:#f0f0f0;color:#111}
+.related-nav{max-width:900px;margin:0 auto 14px auto;display:flex;gap:6px;flex-wrap:wrap}
+.related-nav a{padding:4px 10px;font-size:11px;border:0.5px solid #ccc;border-radius:4px;color:#888;text-decoration:none}
+.related-nav a:hover{background:#f0f0f0;color:#111}
+.related-nav a.current{background:#f0f0f0;color:#111;font-weight:500;pointer-events:none}
+.widget{max-width:900px;margin:0 auto}
+
+.widget .drag-desc{font-size:11px;color:#888;line-height:1.6;margin-bottom:10px;padding:8px 10px;border-left:2px solid #ddd}
+.widget .drag-layout{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.widget .drag-panel{border:0.5px solid #e0e0e0;border-radius:4px;padding:10px}
+.widget .drag-panel-title{font-size:11px;font-weight:500;color:#888;margin-bottom:6px}
+.widget .drag-canvas-wrap{position:relative;height:220px;cursor:crosshair}
+.widget .drag-model-toggle{display:flex;gap:6px;margin-bottom:10px}
+.widget .drag-model-toggle button{padding:4px 12px;border:0.5px solid #ccc;border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:11px}
+.widget .drag-model-toggle button.active{background:#f0f0f0;color:#111;font-weight:500}
+.widget .drag-legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#888;margin-bottom:8px}
+.widget .drag-legend span{display:flex;align-items:center;gap:4px}
+.widget .drag-leg-swatch{display:inline-block;width:12px;height:12px;border-radius:2px}
+.widget .drag-btns{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+.widget .drag-btns button{padding:4px 10px;font-size:11px;border:0.5px solid #ccc;border-radius:4px;background:transparent;color:#888;cursor:pointer}
+.widget .drag-btns button:hover{background:#f0f0f0}
+.widget .drag-stats{display:flex;gap:16px;margin-top:8px}
+.widget .drag-stat{font-size:11px;color:#888}
+.widget .drag-stat strong{color:#111}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <a class="back-home" href="index.html">← Back to home</a>
+  <h1>CRF Editor</h1>
+  <p>Drag any category response curve up or down, seeded from the GRM, GPCM, or Binomial model. Adjacent categories compensate algebraically to keep the expected response function exactly fixed.</p>
+</div>
+
+<nav class="related-nav">
+  <a href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
+  <a href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
+  <a class="current" href="crf-editor.html">CRF editor</a>
+</nav>
+
+<div class="widget" id="main-widget">
+
+<div class="drag-model-toggle">
+  <button class="active" onclick="setDragModel('grm',this)">Seed from GRM</button>
+  <button onclick="setDragModel('gpcm',this)">Seed from GPCM</button>
+  <button onclick="setDragModel('binom',this)">Seed from Binomial</button>
+</div>
+<div class="drag-btns">
+  <button onclick="resetDrag()">Reset to seed</button>
+  <button onclick="randomizeDrag()">Randomize</button>
+  <span id="drag-active-cat" style="font-size:11px;color:#888;padding:4px 8px"></span>
+</div>
+<div class="drag-legend" id="drag-legend"></div>
+<div class="drag-layout">
+  <div class="drag-panel">
+    <div class="drag-panel-title">Category response functions — drag to edit</div>
+    <div class="drag-canvas-wrap"><canvas id="drag-crf"></canvas></div>
+  </div>
+  <div class="drag-panel">
+    <div class="drag-panel-title">Expected response function — locked</div>
+    <div class="drag-canvas-wrap"><canvas id="drag-erf"></canvas></div>
+  </div>
+</div>
+<div class="drag-stats">
+  <div class="drag-stat">ERF max deviation: <strong id="drag-erf-dev">—</strong></div>
+  <div class="drag-stat">Active curve: <strong id="drag-cur-cat">—</strong></div>
+</div>
+
+</div><!-- end .widget -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="isoerf-common.js"></script>
+<script>
+let dragModel = 'grm', dragCRF = null, seedERF = null, dragChart = null, erfChart2 = null;
+let isDragging = false, dragCat = -1, lastDragX = -1;
+function seedDrag(mdl) { mdl = mdl || dragModel; const r = computeFull({ a: 1.2, b: [-1.5, -0.5, 0.5, 1.5] }, mdl); dragCRF = r.crf.map(c => [...c]); seedERF = r.erf.map(v => v); }
+function computeERFfromCRF(crf) { return TH.map((_, i) => CATS.reduce((s, k) => s + k * crf[k][i], 0)); }
+function adjustCRF(cat, i, newVal) {
+  newVal = Math.max(0, Math.min(1, newVal));
+  const delta = newVal - dragCRF[cat][i]; if (Math.abs(delta) < 1e-6) return;
+  let j = cat > 0 ? cat - 1 : cat + 2, m = cat < K - 1 ? cat + 1 : cat - 2; if (j === m) return;
+  const dj = -delta * (cat - m) / (j - m), dm = -delta * (cat - j) / (m - j);
+  if (dragCRF[j][i] + dj < -1e-9 || dragCRF[m][i] + dm < -1e-9) return;
+  dragCRF[cat][i] = newVal; dragCRF[j][i] = Math.max(0, dragCRF[j][i] + dj); dragCRF[m][i] = Math.max(0, dragCRF[m][i] + dm);
+}
+function renderDrag() {
+  if (dragChart) dragChart.destroy();
+  dragChart = new Chart(document.getElementById('drag-crf'), { type: 'line', data: { datasets: CATS.map(k => ({ data: TH.map((t, i) => ({ x: t, y: dragCRF[k][i] })), borderColor: CAT_COLS[k], borderWidth: 2, pointRadius: 0, borderDash: [] })) }, options: baseOpts('P(X=k|θ)').options });
+  const curERF = computeERFfromCRF(dragCRF);
+  if (erfChart2) erfChart2.destroy();
+  erfChart2 = new Chart(document.getElementById('drag-erf'), { type: 'line', data: { datasets: [ds(seedERF, '#888', [4, 3]), ds(curERF, COL_A)] }, options: baseOpts('E[X|θ]', K - 1).options });
+  document.getElementById('drag-erf-dev').textContent = Math.max(...curERF.map((v, i) => Math.abs(v - seedERF[i]))).toFixed(4);
+}
+function buildDragLegend() { const el = document.getElementById('drag-legend'); el.innerHTML = ''; CATS.forEach(k => { const s = document.createElement('span'); s.innerHTML = `<span class="drag-leg-swatch" style="background:${CAT_COLS[k]}"></span>${CAT_NAMES[k]}`; el.appendChild(s); }); const s2 = document.createElement('span'); s2.innerHTML = `<span class="drag-leg-swatch" style="background:#888;opacity:0.5"></span>Seed ERF (dashed)`; el.appendChild(s2); }
+function initDragCanvas() {
+  const canvas = document.getElementById('drag-crf');
+  function onStart(e) { e.preventDefault(); const { clientX, clientY } = e.touches ? e.touches[0] : e; const rect = canvas.getBoundingClientRect(); const tIdx = Math.round((clientX - rect.left) / rect.width * (TH.length - 1)); const prob = 1 - (clientY - rect.top) / rect.height; let best = -1, bestD = 1e9; CATS.forEach(k => { const d = Math.abs(dragCRF[k][tIdx] - prob); if (d < bestD) { bestD = d; best = k; } }); dragCat = bestD < 0.12 ? best : -1; if (dragCat >= 0) { isDragging = true; lastDragX = tIdx; document.getElementById('drag-cur-cat').textContent = CAT_NAMES[dragCat]; document.getElementById('drag-active-cat').textContent = 'Editing: ' + CAT_NAMES[dragCat]; } }
+  function onMove(e) { if (!isDragging || dragCat < 0) return; e.preventDefault(); const { clientX, clientY } = e.touches ? e.touches[0] : e; const rect = canvas.getBoundingClientRect(); const tIdx = Math.max(0, Math.min(TH.length - 1, Math.round((clientX - rect.left) / rect.width * (TH.length - 1)))); const prob = 1 - (clientY - rect.top) / rect.height; const lo = Math.min(lastDragX, tIdx), hi = Math.max(lastDragX, tIdx); for (let i = lo; i <= hi; i++) adjustCRF(dragCat, i, prob); lastDragX = tIdx; renderDrag(); }
+  function onEnd() { isDragging = false; dragCat = -1; document.getElementById('drag-active-cat').textContent = ''; }
+  canvas.addEventListener('mousedown', onStart); canvas.addEventListener('mousemove', onMove); canvas.addEventListener('mouseup', onEnd); canvas.addEventListener('mouseleave', onEnd);
+  canvas.addEventListener('touchstart', onStart, { passive: false }); canvas.addEventListener('touchmove', onMove, { passive: false }); canvas.addEventListener('touchend', onEnd);
+}
+function setDragModel(m, btn) { dragModel = m; document.querySelectorAll('.drag-model-toggle button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); seedDrag(m); renderDrag(); }
+function resetDrag() { seedDrag(dragModel); renderDrag(); }
+function randomizeDrag() { for (let i = 0; i < TH.length; i++) { const pts = [0, ...Array.from({ length: K - 1 }, () => Math.random()), 1].sort((a, b) => a - b); CATS.forEach(k => { dragCRF[k][i] = pts[k + 1] - pts[k]; }); } renderDrag(); }
+
+seedDrag(); buildDragLegend(); initDragCanvas(); renderDrag();
+</script>
+</body>
+</html>

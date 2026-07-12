@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>isoERF Manifold Explorer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:16px 20px}
+.page-header{max-width:900px;margin:0 auto 18px auto;padding-bottom:12px;border-bottom:1px solid #e0e0e0}
+.page-header h1{font-size:16px;font-weight:600;margin-bottom:4px}
+.page-header p{font-size:12px;color:#555;line-height:1.5}
+.page-header a{color:#378ADD;text-decoration:none}
+.page-header a:hover{text-decoration:underline}
+.back-home{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#555;text-decoration:none;padding:4px 10px;border:0.5px solid #ccc;border-radius:4px;margin-bottom:10px}
+.back-home:hover{background:#f0f0f0;color:#111}
+.related-nav{max-width:900px;margin:0 auto 14px auto;display:flex;gap:6px;flex-wrap:wrap}
+.related-nav a{padding:4px 10px;font-size:11px;border:0.5px solid #ccc;border-radius:4px;color:#888;text-decoration:none}
+.related-nav a:hover{background:#f0f0f0;color:#111}
+.related-nav a.current{background:#f0f0f0;color:#111;font-weight:500;pointer-events:none}
+.widget{max-width:900px;margin:0 auto}
+
+.widget .toggle{display:flex;gap:6px;margin-bottom:14px}
+.widget .toggle button{padding:5px 14px;border:0.5px solid #ccc;border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:12px}
+.widget .toggle button.active{background:#f0f0f0;color:#111;font-weight:500}
+.widget .view{display:none}.widget .view.active{display:block}
+.widget .mf-layout{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start}
+.widget .mf-right{display:flex;flex-direction:column;gap:10px}
+.widget .mf-chart-wrap{position:relative;height:160px}
+.widget .mf-sliders{background:#f9f9f9;border-radius:4px;padding:10px;margin-bottom:10px}
+.widget .mf-sliders h4{font-size:11px;font-weight:500;color:#888;margin-bottom:6px}
+.widget .mf-desc{font-size:11px;color:#888;line-height:1.6;padding:8px 10px;border-left:2px solid #ddd;margin-bottom:10px}
+.widget .mf-stat-row{display:flex;gap:16px;font-size:11px;color:#888;margin-top:6px;flex-wrap:wrap}
+.widget .mf-stat-row strong{color:#111}
+.widget .slider-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.widget .slider-row label{font-size:11px;color:#888;width:36px;flex-shrink:0}
+.widget .slider-row input[type=range]{flex:1}
+.widget .slider-row .val{font-size:11px;width:34px;text-align:right;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <a class="back-home" href="index.html">← Back to home</a>
+  <h1>isoERF Manifold Explorer</h1>
+  <p>Explore the near-isoERF neighborhood around a reference threshold configuration for the GRM and GPCM: how quickly ERF distance grows as thresholds move away from the reference, and what that means for identifiability.</p>
+</div>
+
+<nav class="related-nav">
+  <a href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
+  <a class="current" href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
+  <a href="crf-editor.html">CRF editor</a>
+</nav>
+
+<div class="widget" id="main-widget">
+
+<div class="toggle" id="mf-toggle">
+  <button class="active" onclick="setManifold('grm',this)">GRM</button>
+  <button onclick="setManifold('gpcm',this)">GPCM</button>
+</div>
+
+<div class="view active" id="view-grm">
+  <div class="mf-desc">
+    Heatmap of ERF distance (RMSE) over a (b₁, b₂) grid with b₃ and b₄ fixed. The <strong>white curve</strong> traces the near-isoERF contour — the set of (b₁, b₂) values where ERF distance from the reference <span style="color:#1D9E75;font-weight:500">✕</span> is near zero. Points on this curve produce nearly identical ERFs to the reference but different CRFs; moving perpendicular to it drives ERF distance up rapidly. The grayed regions are inadmissible under the GRM ordering constraint. Click anywhere in the admissible region to place the comparison point <span style="color:#D85A30;font-weight:500">●</span> and see how its CRFs differ.
+  </div>
+  <div class="mf-sliders">
+    <h4>Fixed parameters</h4>
+    <div class="slider-row"><label>a</label><input type="range" id="grm-a" min="0.3" max="3" step="0.1" value="1.2"><span class="val" id="grm-a-val">1.20</span></div>
+    <div class="slider-row"><label>b₃</label><input type="range" id="grm-b3" min="-2.5" max="2.5" step="0.1" value="0.5"><span class="val" id="grm-b3-val">0.50</span></div>
+    <div class="slider-row"><label>b₄</label><input type="range" id="grm-b4" min="-2.5" max="2.5" step="0.1" value="1.5"><span class="val" id="grm-b4-val">1.50</span></div>
+    <div class="slider-row" style="margin-top:6px"><label style="width:60px">Ref b₁</label><input type="range" id="grm-rb1" min="-2.5" max="2.5" step="0.1" value="-1.5"><span class="val" id="grm-rb1-val">−1.50</span></div>
+    <div class="slider-row"><label style="width:60px">Ref b₂</label><input type="range" id="grm-rb2" min="-2.5" max="2.5" step="0.1" value="-0.5"><span class="val" id="grm-rb2-val">−0.50</span></div>
+  </div>
+  <div class="mf-layout">
+    <div>
+      <div style="font-size:11px;font-weight:500;color:#888;margin-bottom:4px">ERF distance — b₁ × b₂ slice</div>
+      <div style="position:relative;width:260px;height:260px;cursor:crosshair"><canvas id="grm-heatmap"></canvas></div>
+      <div class="mf-stat-row"><span>Ref: <strong id="grm-ref-coords">—</strong></span><span>Selected: <strong id="grm-sel-coords">—</strong></span><span>RMSE: <strong id="grm-rmse">—</strong></span></div>
+    </div>
+    <div class="mf-right">
+      <div><div style="font-size:11px;font-weight:500;color:#888;margin-bottom:4px">CRFs — reference <span style="color:#1D9E75">(solid)</span> vs selected <span style="color:#D85A30">(dashed)</span></div><div class="mf-chart-wrap"><canvas id="grm-crf"></canvas></div></div>
+      <div><div style="font-size:11px;font-weight:500;color:#888;margin-bottom:4px">ERFs — reference <span style="color:#1D9E75">(solid)</span> vs selected <span style="color:#D85A30">(dashed)</span></div><div class="mf-chart-wrap"><canvas id="grm-erf"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="view" id="view-gpcm">
+  <div class="mf-desc">
+    The GPCM ERF depends only on cumulative sums S<sub>k</sub> = b<sub>1</sub>+…+b<sub>k</sub>. Fixing (b₃, b₄), the heatmap shows ERF distance over a (b₁, b₂) grid. The <strong>white curve</strong> traces the near-isoERF contour — the set of (b₁, b₂) values where ERF distance from the reference <span style="color:#1D9E75;font-weight:500">✕</span> is near zero. The isoERF set is generically just the reference point itself: fixing all S<sub>k</sub> uniquely fixes all b<sub>k</sub>, so there is no continuous isoERF family. The 24 permutations of the reference's b values are plotted as colored dots — green where RMSE is near zero, red where it is large. Click any dot or grid location to compare CRFs.
+  </div>
+  <div class="mf-sliders">
+    <h4>Fixed parameters</h4>
+    <div class="slider-row"><label>a</label><input type="range" id="gpcm-a" min="0.3" max="3" step="0.1" value="1.2"><span class="val" id="gpcm-a-val">1.20</span></div>
+    <div class="slider-row"><label>b₃</label><input type="range" id="gpcm-b3" min="-2.5" max="2.5" step="0.1" value="0.5"><span class="val" id="gpcm-b3-val">0.50</span></div>
+    <div class="slider-row"><label>b₄</label><input type="range" id="gpcm-b4" min="-2.5" max="2.5" step="0.1" value="1.5"><span class="val" id="gpcm-b4-val">1.50</span></div>
+    <div class="slider-row" style="margin-top:6px"><label style="width:60px">Ref b₁</label><input type="range" id="gpcm-rb1" min="-2.5" max="2.5" step="0.1" value="-1.5"><span class="val" id="gpcm-rb1-val">−1.50</span></div>
+    <div class="slider-row"><label style="width:60px">Ref b₂</label><input type="range" id="gpcm-rb2" min="-2.5" max="2.5" step="0.1" value="-0.5"><span class="val" id="gpcm-rb2-val">−0.50</span></div>
+  </div>
+  <div class="mf-layout">
+    <div>
+      <div style="font-size:11px;font-weight:500;color:#888;margin-bottom:4px">ERF distance — b₁ × b₂ slice <span style="font-weight:400">(dots = permutations)</span></div>
+      <div style="position:relative;width:260px;height:260px;cursor:crosshair"><canvas id="gpcm-heatmap"></canvas></div>
+      <div class="mf-stat-row"><span>Ref: <strong id="gpcm-ref-coords">—</strong></span><span>Selected: <strong id="gpcm-sel-coords">—</strong></span><span>RMSE: <strong id="gpcm-rmse">—</strong></span></div>
+    </div>
+    <div class="mf-right">
+      <div><div style="font-size:11px;font-weight:500;color:#888;margin-bottom:4px">CRFs — reference <span style="color:#1D9E75">(solid)</span> vs selected <span style="color:#D85A30">(dashed)</span></div><div class="mf-chart-wrap"><canvas id="gpcm-crf"></canvas></div></div>
+      <div><div style="font-size:11px;font-weight:500;color:#888;margin-bottom:4px">ERFs — reference <span style="color:#1D9E75">(solid)</span> vs selected <span style="color:#D85A30">(dashed)</span></div><div class="mf-chart-wrap"><canvas id="gpcm-erf"></canvas></div></div>
+      <div style="background:#f9f9f9;border-radius:4px;padding:8px">
+        <div style="font-size:11px;font-weight:500;color:#888;margin-bottom:5px">Permutation dots — click to select</div>
+        <div id="gpcm-perm-legend" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:3px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- end .widget -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="isoerf-common.js"></script>
+<script>
+let grmState = { a: 1.2, b3: 0.5, b4: 1.5, rb1: -1.5, rb2: -0.5, selB1: -0.5, selB2: 0.2, grid: null, inited: false };
+function grmAdmissible(b1, b2) { return b1 < b2 && b2 < grmState.b3; }
+function drawGrmHeatmap() {
+  const canvas = document.getElementById('grm-heatmap');
+  const W = canvas.width = 260, H = canvas.height = 260;
+  const ctx = canvas.getContext('2d');
+  drawBaseHeatmap(ctx, W, H, grmState.grid, grmAdmissible);
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.moveTo(0, H); ctx.lineTo(W, 0); ctx.stroke();
+  const b3py = Math.round((1 - toPixel(grmState.b3, 1)) * H);
+  ctx.beginPath(); ctx.moveTo(0, b3py); ctx.lineTo(W, b3py); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = 'rgba(180,180,180,0.7)'; ctx.font = '10px sans-serif';
+  ctx.fillText('b₁≥b₂', 4, H - 4);
+  if (b3py > 14) ctx.fillText('b₂≥b₃', 4, b3py - 4);
+  const rx = Math.round(toPixel(grmState.rb1, W)), ry = Math.round((1 - toPixel(grmState.rb2, 1)) * H);
+  ctx.strokeStyle = COL_REF; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(rx - 6, ry - 6); ctx.lineTo(rx + 6, ry + 6); ctx.moveTo(rx + 6, ry - 6); ctx.lineTo(rx - 6, ry + 6); ctx.stroke();
+  if (grmAdmissible(grmState.selB1, grmState.selB2)) {
+    const sx = Math.round(toPixel(grmState.selB1, W)), sy = Math.round((1 - toPixel(grmState.selB2, 1)) * H);
+    ctx.fillStyle = COL_B; ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill();
+  }
+  const r = grmAdmissible(grmState.selB1, grmState.selB2) ? rmse(grmERFfn(grmState.a, [grmState.rb1, grmState.rb2, grmState.b3, grmState.b4]), grmERFfn(grmState.a, [grmState.selB1, grmState.selB2, grmState.b3, grmState.b4])) : null;
+  document.getElementById('grm-ref-coords').textContent = `b₁=${grmState.rb1.toFixed(2)}, b₂=${grmState.rb2.toFixed(2)}`;
+  document.getElementById('grm-sel-coords').textContent = grmAdmissible(grmState.selB1, grmState.selB2) ? `b₁=${grmState.selB1.toFixed(2)}, b₂=${grmState.selB2.toFixed(2)}` : '(inadmissible)';
+  const re = document.getElementById('grm-rmse');
+  if (r !== null) { re.textContent = r.toFixed(4); re.style.color = r < 0.05 ? COL_REF : r < 0.2 ? '#BA7517' : COL_B; } else re.textContent = '—';
+}
+function grmFullRender() {
+  grmState.grid = buildGrid(grmERFfn, grmState.rb1, grmState.rb2, grmState.b3, grmState.b4, grmState.a);
+  drawGrmHeatmap();
+  const refPar = { a: grmState.a, b: [grmState.rb1, grmState.rb2, grmState.b3, grmState.b4] };
+  const selPar = { a: grmState.a, b: [grmState.selB1, grmState.selB2, grmState.b3, grmState.b4] };
+  renderMfCompareCharts(refPar, selPar, 'grm', 'grm-crf', 'grm-erf');
+}
+function initGrmManifold() {
+  const canvas = document.getElementById('grm-heatmap');
+  function onClick(e) {
+    const rect = canvas.getBoundingClientRect();
+    const b1 = MF_RANGE[0] + (e.clientX - rect.left) / rect.width * (MF_RANGE[1] - MF_RANGE[0]);
+    const b2 = MF_RANGE[0] + (1 - (e.clientY - rect.top) / rect.height) * (MF_RANGE[1] - MF_RANGE[0]);
+    if (!grmAdmissible(b1, b2)) return;
+    grmState.selB1 = b1; grmState.selB2 = b2;
+    drawGrmHeatmap();
+    renderMfCompareCharts({ a: grmState.a, b: [grmState.rb1, grmState.rb2, grmState.b3, grmState.b4] }, { a: grmState.a, b: [b1, b2, grmState.b3, grmState.b4] }, 'grm', 'grm-crf', 'grm-erf');
+  }
+  canvas.addEventListener('click', onClick); canvas.addEventListener('mousemove', e => { if (e.buttons === 1) onClick(e); });
+  function bind(id, setter, valId) {
+    document.getElementById(id).addEventListener('input', e => {
+      setter(+e.target.value);
+      document.getElementById(valId).textContent = (+e.target.value >= 0 ? (+e.target.value).toFixed(2) : '−' + Math.abs(+e.target.value).toFixed(2));
+      grmFullRender();
+    });
+  }
+  bind('grm-a', v => { grmState.a = v; }, 'grm-a-val');
+  bind('grm-b3', v => { grmState.b3 = v; }, 'grm-b3-val');
+  bind('grm-b4', v => { grmState.b4 = v; }, 'grm-b4-val');
+  bind('grm-rb1', v => { grmState.rb1 = v; if (grmState.rb1 >= grmState.rb2) { grmState.rb2 = v + 0.2; document.getElementById('grm-rb2').value = grmState.rb2.toFixed(1); document.getElementById('grm-rb2-val').textContent = grmState.rb2.toFixed(2); } }, 'grm-rb1-val');
+  bind('grm-rb2', v => { grmState.rb2 = v; if (grmState.rb2 <= grmState.rb1) { grmState.rb1 = v - 0.2; document.getElementById('grm-rb1').value = grmState.rb1.toFixed(1); document.getElementById('grm-rb1-val').textContent = grmState.rb1.toFixed(2); } }, 'grm-rb2-val');
+}
+
+let gpcmMfState = { a: 1.2, b3: 0.5, b4: 1.5, rb1: -1.5, rb2: -0.5, selB1: -0.5, selB2: 0.2, selIsPerm: false, selPermIdx: -1, grid: null, inited: false };
+function rmseColor(r) { return r < 0.05 ? COL_REF : r < 0.3 ? '#BA7517' : COL_B; }
+function drawGpcmHeatmap() {
+  const canvas = document.getElementById('gpcm-heatmap');
+  const W = canvas.width = 260, H = canvas.height = 260;
+  const ctx = canvas.getContext('2d');
+  drawBaseHeatmap(ctx, W, H, gpcmMfState.grid, null);
+  const rx = Math.round(toPixel(gpcmMfState.rb1, W)), ry = Math.round((1 - toPixel(gpcmMfState.rb2, 1)) * H);
+  ctx.strokeStyle = COL_REF; ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(rx - 7, ry - 7); ctx.lineTo(rx + 7, ry + 7); ctx.moveTo(rx + 7, ry - 7); ctx.lineTo(rx - 7, ry + 7); ctx.stroke();
+  const refFull = [gpcmMfState.rb1, gpcmMfState.rb2, gpcmMfState.b3, gpcmMfState.b4];
+  const refERF = gpcmERFfn(gpcmMfState.a, refFull);
+  allPerms(refFull).forEach((p, idx) => {
+    const px2 = Math.round(toPixel(p[0], W)), py2 = Math.round((1 - toPixel(p[1], 1)) * H);
+    if (px2 < 0 || px2 > W || py2 < 0 || py2 > H) return;
+    const r = rmse(refERF, gpcmERFfn(gpcmMfState.a, p));
+    const col = rmseColor(r);
+    const isSelected = gpcmMfState.selIsPerm && gpcmMfState.selPermIdx === idx;
+    ctx.fillStyle = col; ctx.strokeStyle = isSelected ? '#fff' : col; ctx.lineWidth = isSelected ? 2 : 1;
+    ctx.beginPath(); ctx.arc(px2, py2, isSelected ? 7 : 5, 0, Math.PI * 2); ctx.fill();
+    if (isSelected) ctx.stroke();
+  });
+  if (!gpcmMfState.selIsPerm) {
+    const sx = Math.round(toPixel(gpcmMfState.selB1, W)), sy = Math.round((1 - toPixel(gpcmMfState.selB2, 1)) * H);
+    ctx.fillStyle = COL_B; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  }
+  const selB = [gpcmMfState.selB1, gpcmMfState.selB2, gpcmMfState.b3, gpcmMfState.b4];
+  const r = rmse(refERF, gpcmERFfn(gpcmMfState.a, selB));
+  document.getElementById('gpcm-ref-coords').textContent = `b=[${refFull.map(v => v.toFixed(2)).join(', ')}]`;
+  document.getElementById('gpcm-sel-coords').textContent = `b=[${selB.map(v => v.toFixed(2)).join(', ')}]`;
+  const re = document.getElementById('gpcm-rmse'); re.textContent = r.toFixed(4); re.style.color = rmseColor(r);
+}
+function buildGpcmPermLegend() {
+  const el = document.getElementById('gpcm-perm-legend'); el.innerHTML = '';
+  const refFull = [gpcmMfState.rb1, gpcmMfState.rb2, gpcmMfState.b3, gpcmMfState.b4];
+  const refERF = gpcmERFfn(gpcmMfState.a, refFull);
+  allPerms(refFull).forEach((p, idx) => {
+    const r = rmse(refERF, gpcmERFfn(gpcmMfState.a, p));
+    const col = rmseColor(r);
+    const btn = document.createElement('button');
+    btn.style.cssText = `padding:3px 6px;font-size:10px;border:0.5px solid ${col};border-radius:4px;background:transparent;color:${col};cursor:pointer;text-align:left;font-family:monospace`;
+    btn.textContent = '[' + p.map(v => v.toFixed(1)).join(',') + ']'; btn.title = `RMSE=${r.toFixed(4)}`;
+    btn.onclick = () => {
+      gpcmMfState.selB1 = p[0]; gpcmMfState.selB2 = p[1];
+      gpcmMfState.selIsPerm = true; gpcmMfState.selPermIdx = idx;
+      drawGpcmHeatmap(); buildGpcmPermLegend();
+      renderMfCompareCharts({ a: gpcmMfState.a, b: refFull }, { a: gpcmMfState.a, b: p }, 'gpcm', 'gpcm-crf', 'gpcm-erf');
+    };
+    el.appendChild(btn);
+  });
+}
+function gpcmMfFullRender() {
+  const refFull = [gpcmMfState.rb1, gpcmMfState.rb2, gpcmMfState.b3, gpcmMfState.b4];
+  gpcmMfState.grid = buildGrid(gpcmERFfn, gpcmMfState.rb1, gpcmMfState.rb2, gpcmMfState.b3, gpcmMfState.b4, gpcmMfState.a);
+  drawGpcmHeatmap(); buildGpcmPermLegend();
+  renderMfCompareCharts({ a: gpcmMfState.a, b: refFull }, { a: gpcmMfState.a, b: [gpcmMfState.selB1, gpcmMfState.selB2, gpcmMfState.b3, gpcmMfState.b4] }, 'gpcm', 'gpcm-crf', 'gpcm-erf');
+}
+function initGpcmManifold() {
+  const canvas = document.getElementById('gpcm-heatmap');
+  function onClick(e) {
+    const rect = canvas.getBoundingClientRect();
+    const b1 = MF_RANGE[0] + (e.clientX - rect.left) / rect.width * (MF_RANGE[1] - MF_RANGE[0]);
+    const b2 = MF_RANGE[0] + (1 - (e.clientY - rect.top) / rect.height) * (MF_RANGE[1] - MF_RANGE[0]);
+    gpcmMfState.selB1 = b1; gpcmMfState.selB2 = b2; gpcmMfState.selIsPerm = false; gpcmMfState.selPermIdx = -1;
+    drawGpcmHeatmap(); buildGpcmPermLegend();
+    renderMfCompareCharts({ a: gpcmMfState.a, b: [gpcmMfState.rb1, gpcmMfState.rb2, gpcmMfState.b3, gpcmMfState.b4] }, { a: gpcmMfState.a, b: [b1, b2, gpcmMfState.b3, gpcmMfState.b4] }, 'gpcm', 'gpcm-crf', 'gpcm-erf');
+  }
+  canvas.addEventListener('click', onClick); canvas.addEventListener('mousemove', e => { if (e.buttons === 1) onClick(e); });
+  function bind(id, setter, valId) {
+    document.getElementById(id).addEventListener('input', e => {
+      setter(+e.target.value);
+      document.getElementById(valId).textContent = (+e.target.value >= 0 ? (+e.target.value).toFixed(2) : '−' + Math.abs(+e.target.value).toFixed(2));
+      gpcmMfState.selIsPerm = false; gpcmMfState.selPermIdx = -1; gpcmMfFullRender();
+    });
+  }
+  bind('gpcm-a', v => { gpcmMfState.a = v; }, 'gpcm-a-val');
+  bind('gpcm-b3', v => { gpcmMfState.b3 = v; }, 'gpcm-b3-val');
+  bind('gpcm-b4', v => { gpcmMfState.b4 = v; }, 'gpcm-b4-val');
+  bind('gpcm-rb1', v => { gpcmMfState.rb1 = v; }, 'gpcm-rb1-val');
+  bind('gpcm-rb2', v => { gpcmMfState.rb2 = v; }, 'gpcm-rb2-val');
+}
+
+function setManifold(m, btn) {
+  document.querySelectorAll('#mf-toggle button').forEach(b => b.classList.remove('active')); btn.classList.add('active');
+  document.querySelectorAll('#main-widget .view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-' + m).classList.add('active');
+  if (m === 'grm') { if (!grmState.inited) { grmState.inited = true; initGrmManifold(); } grmFullRender(); }
+  else { if (!gpcmMfState.inited) { gpcmMfState.inited = true; initGpcmManifold(); } gpcmMfFullRender(); }
+}
+
+const initialModel = new URLSearchParams(location.search).get('model') === 'gpcm' ? 'gpcm' : 'grm';
+if (initialModel === 'gpcm') {
+  document.querySelectorAll('#mf-toggle button').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#mf-toggle button')[1].classList.add('active');
+  document.getElementById('view-grm').classList.remove('active');
+  document.getElementById('view-gpcm').classList.add('active');
+}
+if (initialModel === 'grm') { grmState.inited = true; initGrmManifold(); grmFullRender(); }
+else { gpcmMfState.inited = true; initGpcmManifold(); gpcmMfFullRender(); }
+</script>
+</body>
+</html>

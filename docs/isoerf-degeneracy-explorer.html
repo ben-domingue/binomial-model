@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>isoERF Degeneracy Explorer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:16px 20px}
+.page-header{max-width:900px;margin:0 auto 18px auto;padding-bottom:12px;border-bottom:1px solid #e0e0e0}
+.page-header h1{font-size:16px;font-weight:600;margin-bottom:4px}
+.page-header p{font-size:12px;color:#555;line-height:1.5}
+.page-header a{color:#378ADD;text-decoration:none}
+.page-header a:hover{text-decoration:underline}
+.back-home{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#555;text-decoration:none;padding:4px 10px;border:0.5px solid #ccc;border-radius:4px;margin-bottom:10px}
+.back-home:hover{background:#f0f0f0;color:#111}
+.related-nav{max-width:900px;margin:0 auto 14px auto;display:flex;gap:6px;flex-wrap:wrap}
+.related-nav a{padding:4px 10px;font-size:11px;border:0.5px solid #ccc;border-radius:4px;color:#888;text-decoration:none}
+.related-nav a:hover{background:#f0f0f0;color:#111}
+.related-nav a.current{background:#f0f0f0;color:#111;font-weight:500;pointer-events:none}
+.widget{max-width:900px;margin:0 auto}
+
+.widget .toggle{display:flex;gap:6px;margin-bottom:14px}
+.widget .toggle button{padding:5px 14px;border:0.5px solid #ccc;border-radius:4px;background:transparent;color:#888;cursor:pointer;font-size:12px}
+.widget .toggle button.active{background:#f0f0f0;color:#111;font-weight:500}
+.widget .panels{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
+.widget .panel{border:0.5px solid #e0e0e0;border-radius:4px;padding:8px}
+.widget .panel-title{font-size:11px;font-weight:500;color:#888;margin-bottom:5px}
+.widget .controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.widget .ctrl-panel{border:0.5px solid #e0e0e0;border-radius:4px;padding:10px}
+.widget .ctrl-title{font-size:12px;font-weight:500;margin-bottom:8px}
+.widget .cfg-a{color:#378ADD}.widget .cfg-b{color:#D85A30}
+.widget .slider-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.widget .slider-row label{font-size:11px;color:#888;width:36px;flex-shrink:0}
+.widget .slider-row input[type=range]{flex:1}
+.widget .slider-row .val{font-size:11px;width:34px;text-align:right;font-variant-numeric:tabular-nums}
+.widget .rmse-bar{display:flex;align-items:center;gap:10px;padding:7px 12px;border:0.5px solid #e0e0e0;border-radius:4px;margin-bottom:10px;background:#f9f9f9;flex-wrap:wrap}
+.widget .rmse-label{font-size:11px;color:#888}
+.widget .rmse-val{font-size:15px;font-weight:500}
+.widget .rmse-val.good{color:#1D9E75}.widget .rmse-val.ok{color:#BA7517}.widget .rmse-val.bad{color:#E24B4A}
+.widget .action-btns{display:flex;gap:5px;align-items:center;margin-left:auto;flex-wrap:wrap}
+.widget .action-btns button{padding:4px 9px;font-size:11px;border:0.5px solid #ccc;border-radius:4px;background:transparent;color:#888;cursor:pointer}
+.widget .action-btns button:hover{background:#f0f0f0}
+.widget .legend{display:flex;gap:14px;font-size:11px;color:#888;margin-bottom:6px;flex-wrap:wrap}
+.widget .legend span{display:flex;align-items:center;gap:4px}
+.widget .leg-solid{display:inline-block;width:20px;height:2px}
+.widget .leg-dash{display:inline-block;width:20px;height:0;border-top:2px dashed}
+.widget input[type=range]:disabled{opacity:.3;cursor:not-allowed}
+.widget .math-panel{border:0.5px solid #e0e0e0;border-radius:4px;padding:12px;margin-bottom:10px;display:none}
+.widget .math-panel.visible{display:block}
+.widget .math-title{font-size:12px;font-weight:500;margin-bottom:8px}
+.widget .math-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.widget .math-block{background:#f9f9f9;border-radius:4px;padding:10px}
+.widget .math-block h4{font-size:11px;font-weight:500;margin-bottom:6px;color:#888}
+.widget .eq-row{display:flex;align-items:baseline;gap:6px;font-size:12px;margin-bottom:3px;font-family:monospace}
+.widget .eq-label{color:#888;width:28px;flex-shrink:0;font-size:11px}
+.widget .eq-val{font-weight:500}
+.widget .eq-match{color:#1D9E75}.widget .eq-mismatch{color:#E24B4A}
+.widget .cum-sum-note{font-size:11px;color:#888;margin-top:6px;line-height:1.5}
+.widget .perm-nav h4{font-size:11px;font-weight:500;margin-bottom:5px;color:#888}
+.widget .perm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(116px,1fr));gap:4px}
+.widget .perm-btn{padding:4px 6px;font-size:10px;border:0.5px solid #e0e0e0;border-radius:4px;background:transparent;color:#888;cursor:pointer;text-align:left;font-family:monospace}
+.widget .perm-btn:hover{background:#f0f0f0}
+.widget .perm-btn.active-perm{border-color:#D85A30;color:#D85A30}
+.widget .perm-btn.exact-erf{color:#1D9E75}
+.widget .note{font-size:11px;color:#888;line-height:1.5;padding:8px 10px;border-left:2px solid #ddd;margin-top:6px}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <a class="back-home" href="index.html">← Back to home</a>
+  <h1>isoERF Degeneracy Explorer</h1>
+  <p>Compare two parameter configurations (A and B) within the same model — GRM, GPCM, or Binomial — to see when different configurations produce identical or near-identical expected response functions (ERFs) despite different category response functions (CRFs).</p>
+</div>
+
+<nav class="related-nav">
+  <a class="current" href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
+  <a href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
+  <a href="crf-editor.html">CRF editor</a>
+</nav>
+
+<div class="widget" id="main-widget">
+
+<div class="toggle" id="model-toggle">
+  <button class="active" onclick="setModel('grm',this)">GRM</button>
+  <button onclick="setModel('gpcm',this)">GPCM</button>
+  <button onclick="setModel('binom',this)">Binomial</button>
+</div>
+<div class="math-panel" id="math-panel">
+  <div class="math-title" id="math-title"></div>
+  <div style="font-size:11px;color:#888;line-height:1.6;margin-bottom:10px" id="math-prose"></div>
+  <div class="math-grid">
+    <div class="math-block"><h4 id="math-sum-title"></h4><div id="sums-display"></div><div class="cum-sum-note" id="math-sum-note"></div></div>
+    <div class="math-block"><div class="perm-nav"><h4 id="perm-grid-title"></h4><div class="perm-grid" id="perm-grid"></div></div></div>
+  </div>
+</div>
+<div class="legend">
+  <span><span class="leg-solid" style="background:#378ADD"></span>Config A</span>
+  <span><span class="leg-dash" style="border-top-color:#D85A30"></span>Config B</span>
+</div>
+<div class="panels">
+  <div class="panel"><div class="panel-title">Boundary / threshold functions</div><div style="position:relative;height:155px"><canvas id="c-bound"></canvas></div></div>
+  <div class="panel"><div class="panel-title">Category response functions</div><div style="position:relative;height:155px"><canvas id="c-crf"></canvas></div></div>
+  <div class="panel"><div class="panel-title">Expected response functions</div><div style="position:relative;height:155px"><canvas id="c-erf"></canvas></div></div>
+</div>
+<div class="rmse-bar">
+  <span class="rmse-label">ERF distance (RMSE)</span>
+  <span class="rmse-val" id="rmse-val">—</span>
+  <div class="action-btns">
+    <button onclick="permuteB()" id="btn-permute">Random permutation</button>
+    <button onclick="reverseB()" id="btn-reverse">Reverse B</button>
+    <button onclick="resetB()">Reset B</button>
+  </div>
+</div>
+<div class="controls">
+  <div class="ctrl-panel"><div class="ctrl-title cfg-a">Config A</div><div id="sliders-a"></div></div>
+  <div class="ctrl-panel"><div class="ctrl-title cfg-b">Config B</div><div id="sliders-b"></div></div>
+</div>
+<div class="note" id="model-note"></div>
+
+</div><!-- end .widget -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="isoerf-common.js"></script>
+<script>
+let model = 'grm';
+let parA = { a: 1.2, b: [-1.5, -0.5, 0.5, 1.5] };
+let parB = { a: 1.2, b: [-1.5, -0.5, 0.5, 1.5] };
+let activePerm = null;
+
+function render() {
+  const rA = computeFull(parA, model), rB = computeFull(parB, model);
+  makeChart('c-bound', { data: { datasets: [...rA.bound.map(c => ds(c, COL_A)), ...rB.bound.map(c => ds(c, COL_B, [4, 3]))] }, ...baseOpts('P(X≥k|θ)') });
+  makeChart('c-crf', { data: { datasets: [...rA.crf.map((c, k) => ds(c, CAT_COLS[k])), ...rB.crf.map((c, k) => ds(c, CAT_COLS[k], [4, 3]))] }, ...baseOpts('P(X=k|θ)') });
+  makeChart('c-erf', { data: { datasets: [ds(rA.erf, COL_A), ds(rB.erf, COL_B, [4, 3])] }, ...baseOpts('E[X|θ]', K - 1) });
+  const r = rmse(rA.erf, rB.erf);
+  const el = document.getElementById('rmse-val');
+  el.textContent = r.toFixed(4);
+  el.className = 'rmse-val ' + (r < 0.05 ? 'good' : r < 0.2 ? 'ok' : 'bad');
+  updateMathPanel();
+}
+
+const MATH_CONFIG = {
+  grm: {
+    title: 'Equivalence structure for the GRM',
+    prose: `The GRM ERF is E[X|θ] = Σ<sub>k</sub> logis(a(θ−b<sub>k</sub>)) — a plain sum of K−1 logistic CDFs. Because addition is commutative, any permutation of the b values would give an identical ERF. However, <strong>the GRM requires b₁ &lt; b₂ &lt; b₃ &lt; b₄</strong>, so the only admissible permutation is the identity. The ordering constraint eliminates all permutation degeneracy, and a separate injectivity argument shows that permutations are the only source of degeneracy — so the isoERF set within the admissible region is a <strong>single point</strong>. The <a href="isoerf-manifold-explorer.html?model=grm" style="color:#378ADD">isoERF manifold explorer</a> shows the <strong>near-isoERF neighborhood</strong>: how ERF distance grows as parameters move away from the reference.`,
+    sumTitle: 'Term contributions logis(a(θ−b<sub>k</sub>)) at θ=0',
+    sumNote: 'The sum is permutation-invariant, but ordering forces a unique assignment of b values to subscripts. No non-trivial permutations are admissible.'
+  },
+  gpcm: {
+    title: 'Equivalence structure for the GPCM',
+    prose: `The GPCM ERF depends only on cumulative sums S<sub>k</sub> = b<sub>1</sub>+…+b<sub>k</sub>. Two configs produce identical ERFs iff their S-vectors agree. Since b<sub>k</sub> = S<sub>k</sub>−S<sub>k−1</sub>, fixing all S<sub>k</sub> fixes all b<sub>k</sub> uniquely — the isoERF set is a <strong>single point</strong>. Unlike the GRM, permutations of the b<sub>k</sub> generally change the S-vector and hence the ERF, so there is no permutation degeneracy either. The <a href="isoerf-manifold-explorer.html?model=gpcm" style="color:#378ADD">isoERF manifold explorer</a> shows all 24 permutations as labeled dots on the ERF-distance landscape.`,
+    sumTitle: 'Cumulative sums S<sub>k</sub> = b<sub>1</sub>+…+b<sub>k</sub>',
+    sumNote: 'Identical S-vectors → identical ERF exactly. The isoERF set is a single point — no continuous or discrete degeneracy.'
+  }
+};
+
+function updateMathPanel() {
+  const mp = document.getElementById('math-panel');
+  if (model === 'binom') { mp.classList.remove('visible'); return; }
+  mp.classList.add('visible');
+  const cfg = MATH_CONFIG[model];
+  document.getElementById('math-title').textContent = cfg.title;
+  document.getElementById('math-prose').innerHTML = cfg.prose;
+  document.getElementById('math-sum-title').innerHTML = cfg.sumTitle;
+  document.getElementById('math-sum-note').textContent = cfg.sumNote;
+  document.getElementById('perm-grid-title').textContent = model === 'grm' ? 'Permutations' : "All 24 permutations of A's b values — click to apply to B";
+
+  const disp = document.getElementById('sums-display'); disp.innerHTML = '';
+  if (model === 'grm') {
+    const a = parA.a;
+    ['A', 'B'].forEach((lbl, ci) => {
+      const par = ci === 0 ? parA : parB, col = ci === 0 ? COL_A : COL_B;
+      const h = document.createElement('div'); h.style.cssText = `font-size:11px;font-weight:500;color:${col};margin-bottom:3px;margin-top:${ci ? 8 : 0}px`;
+      h.textContent = `Config ${lbl}  b=[${par.b.map(v => v.toFixed(2)).join(', ')}]`; disp.appendChild(h);
+      const sumVal = par.b.reduce((s, bk) => s + logis(a * (0 - bk)), 0);
+      par.b.forEach((bk, k) => { const d = document.createElement('div'); d.style.cssText = 'font-size:11px;color:#888;margin-bottom:2px;font-family:monospace'; d.textContent = `logis(a(0−b${k + 1})) = ${logis(a * (0 - bk)).toFixed(3)}`; disp.appendChild(d); });
+      const sv = document.createElement('div'); sv.style.cssText = `font-size:11px;font-weight:500;margin-top:3px;font-family:monospace;color:#1D9E75`; sv.textContent = `Sum = ${sumVal.toFixed(3)}`; disp.appendChild(sv);
+    });
+  } else {
+    const sA = cumSums(parA.b), sB = cumSums(parB.b);
+    ['A', 'B'].forEach((lbl, ci) => {
+      const s = ci === 0 ? sA : sB, par = ci === 0 ? parA : parB, col = ci === 0 ? COL_A : COL_B;
+      const h = document.createElement('div'); h.style.cssText = `font-size:11px;font-weight:500;color:${col};margin-bottom:3px;margin-top:${ci ? 8 : 0}px`;
+      h.textContent = `Config ${lbl}  b=[${par.b.map(v => v.toFixed(2)).join(', ')}]`; disp.appendChild(h);
+      for (let k = 0; k < K - 1; k++) { const row = document.createElement('div'); row.className = 'eq-row'; const match = ci === 1 && Math.abs(sA[k] - sB[k]) < 0.001, mismatch = ci === 1 && !match; row.innerHTML = `<span class="eq-label">S<sub>${k + 1}</sub></span><span class="eq-val ${match ? 'eq-match' : mismatch ? 'eq-mismatch' : ''}">${s[k].toFixed(3)}</span>`; disp.appendChild(row); }
+    });
+  }
+
+  const grid = document.getElementById('perm-grid'); grid.innerHTML = '';
+  if (model === 'grm') {
+    grid.style.display = 'block';
+    grid.innerHTML = '<div style="font-size:11px;color:#888;line-height:1.6">The 23 non-trivial permutations of b₁…b₄ all violate the ordering constraint and are inadmissible under the GRM. Only the identity permutation is valid. The isoERF set is therefore a single point — use the <a href="isoerf-manifold-explorer.html?model=grm" style="color:#378ADD">isoERF manifold explorer</a> to explore the near-isoERF neighborhood instead.</div>';
+    return;
+  }
+  grid.style.display = 'grid';
+  const refSums = cumSums(parA.b);
+  allPerms(parA.b).forEach((p, idx) => {
+    const btn = document.createElement('button');
+    const exact = cumSums(p).every((v, k) => Math.abs(v - refSums[k]) < 0.001);
+    btn.className = 'perm-btn' + (activePerm === idx ? ' active-perm' : '') + (exact ? ' exact-erf' : '');
+    btn.textContent = '[' + p.map(v => v.toFixed(1)).join(',') + ']';
+    btn.onclick = () => { activePerm = idx; parB.b = [...p]; parB.a = parA.a; syncSlidersToState(); render(); grid.querySelectorAll('button').forEach((b, i) => b.classList.toggle('active-perm', i === idx)); };
+    grid.appendChild(btn);
+  });
+}
+
+function buildSliders(cfg, par, cid) {
+  const el = document.getElementById(cid); el.innerHTML = '';
+  const aRow = document.createElement('div'); aRow.className = 'slider-row';
+  aRow.innerHTML = `<label>a</label><input type="range" min="0.3" max="3" step="0.05" value="${par.a.toFixed(2)}" id="sl-${cfg}-a"><span class="val" id="vl-${cfg}-a">${par.a.toFixed(2)}</span>`;
+  el.appendChild(aRow);
+  aRow.querySelector('input').addEventListener('input', e => { const v = +e.target.value; if (cfg === 'a') parA.a = v; else parB.a = v; document.getElementById(`vl-${cfg}-a`).textContent = v.toFixed(2); activePerm = null; render(); });
+  for (let j = 0; j < K - 1; j++) {
+    const locked = model === 'binom' && j > 0;
+    const lbl = model === 'binom' ? (j === 0 ? 'b₁' : 'b' + (j + 1) + ' ✗') : 'b' + (j + 1);
+    const row = document.createElement('div'); row.className = 'slider-row';
+    row.innerHTML = `<label>${lbl}</label><input type="range" min="-3" max="3" step="0.05" value="${par.b[j].toFixed(2)}" id="sl-${cfg}-b${j}" ${locked ? 'disabled' : ''}><span class="val" id="vl-${cfg}-b${j}">${par.b[j].toFixed(2)}</span>`;
+    el.appendChild(row);
+    if (!locked) row.querySelector('input').addEventListener('input', e => {
+      const v = +e.target.value; if (cfg === 'a') parA.b[j] = v; else parB.b[j] = v;
+      if (model === 'grm') { const p2 = cfg === 'a' ? parA : parB; p2.b.sort((x, y) => x - y); p2.b.forEach((_, k) => { const s = document.getElementById(`sl-${cfg}-b${k}`); if (s) { s.value = p2.b[k].toFixed(2); document.getElementById(`vl-${cfg}-b${k}`).textContent = p2.b[k].toFixed(2); } }); }
+      else document.getElementById(`vl-${cfg}-b${j}`).textContent = v.toFixed(2);
+      activePerm = null; render();
+    });
+  }
+}
+function syncSlidersToState() {
+  ['a', 'b'].forEach(cfg => {
+    const par = cfg === 'a' ? parA : parB;
+    const s = document.getElementById(`sl-${cfg}-a`); if (s) { s.value = par.a.toFixed(2); document.getElementById(`vl-${cfg}-a`).textContent = par.a.toFixed(2); }
+    for (let j = 0; j < K - 1; j++) { const sl = document.getElementById(`sl-${cfg}-b${j}`); if (sl) { sl.value = par.b[j].toFixed(2); document.getElementById(`vl-${cfg}-b${j}`).textContent = par.b[j].toFixed(2); } }
+  });
+}
+function rebuildSliders() { buildSliders('a', parA, 'sliders-a'); buildSliders('b', parB, 'sliders-b'); }
+function permuteB() { const arr = [...parA.b]; for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1));[arr[i], arr[j]] = [arr[j], arr[i]]; } parB.b = arr; parB.a = parA.a; activePerm = null; syncSlidersToState(); render(); }
+function reverseB() { parB.b = [...parA.b].reverse(); parB.a = parA.a; activePerm = null; syncSlidersToState(); render(); }
+function resetB() { parB = { a: parA.a, b: [...parA.b] }; activePerm = null; syncSlidersToState(); render(); }
+
+const NOTES = {
+  grm: 'GRM: the ordering constraint eliminates all non-trivial permutations, and permutations are the only source of degeneracy — so the isoERF set is a single point. The isoERF manifold explorer shows the near-isoERF neighborhood.',
+  gpcm: 'GPCM: the ERF depends on cumulative sums S_k. Permutations generally change the S-vector and hence the ERF. The isoERF set is a single point. The isoERF manifold explorer shows all 24 permutations as dots on the ERF-distance landscape.',
+  binom: `Binomial: the ERF is E[X|θ] = (K−1)·logis(aθ−b), a rescaled logistic function fully determined by two parameters (a, b). The mapping from parameters to ERF is injective: no two distinct (a, b) pairs produce the same ERF function. The CRFs are uniquely determined by the ERF — the isoERF set at any parameter point is that point alone.`
+};
+
+function setModel(m, btn) {
+  model = m; activePerm = null;
+  document.querySelectorAll('#model-toggle button').forEach(b => b.classList.remove('active')); btn.classList.add('active');
+  parA = { a: 1.2, b: [-1.5, -0.5, 0.5, 1.5] }; parB = { a: 1.2, b: [-1.5, -0.5, 0.5, 1.5] };
+  document.getElementById('math-panel').classList.toggle('visible', m !== 'binom');
+  document.getElementById('model-note').textContent = NOTES[m];
+  const grmMode = m === 'grm';
+  document.getElementById('btn-permute').disabled = grmMode;
+  document.getElementById('btn-permute').title = grmMode ? 'Disabled: ordering constraint eliminates non-trivial permutations' : '';
+  document.getElementById('btn-reverse').disabled = grmMode;
+  document.getElementById('btn-reverse').title = grmMode ? 'Disabled: ordering constraint eliminates non-trivial permutations' : '';
+  rebuildSliders(); render();
+}
+
+document.getElementById('math-panel').classList.add('visible');
+document.getElementById('model-note').textContent = NOTES['grm'];
+document.getElementById('btn-permute').disabled = true;
+document.getElementById('btn-reverse').disabled = true;
+rebuildSliders(); render();
+</script>
+</body>
+</html>
