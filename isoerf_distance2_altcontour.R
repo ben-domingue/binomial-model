@@ -327,6 +327,6 @@ p_final <- (rows$GRM / rows$GPCM / rows$Binomial) +
                   plot.subtitle = element_text(size = 12))
   )
 
-ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/src/fig_isoerf_distance2_altcontour.pdf",
+ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/fig_isoerf_distance2_altcontour.pdf",
        p_final, width = 15, height = 16)
 cat("saved\n")
