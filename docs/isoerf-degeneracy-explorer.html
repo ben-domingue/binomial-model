@@ -41,6 +41,9 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
 .widget .action-btns{display:flex;gap:5px;align-items:center;margin-left:auto;flex-wrap:wrap}
 .widget .action-btns button{padding:4px 9px;font-size:11px;border:0.5px solid #ccc;border-radius:4px;background:transparent;color:#888;cursor:pointer}
 .widget .action-btns button:hover{background:#f0f0f0}
+.widget .action-btns button:disabled{opacity:.4;cursor:not-allowed;background:transparent}
+.widget .action-btns button:disabled:hover{background:transparent}
+.widget .grm-btn-note{font-size:11px;color:#BA7517;width:100%;margin-top:4px}
 .widget .legend{display:flex;gap:14px;font-size:11px;color:#888;margin-bottom:6px;flex-wrap:wrap}
 .widget .legend span{display:flex;align-items:center;gap:4px}
 .widget .leg-solid{display:inline-block;width:20px;height:2px}
@@ -112,6 +115,7 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
     <button onclick="reverseB()" id="btn-reverse">Reverse B</button>
     <button onclick="resetB()">Reset B</button>
   </div>
+  <div class="grm-btn-note" id="grm-btn-note" style="display:none">Random permutation and Reverse B are disabled under the GRM: every non-identity permutation of b violates the ordering constraint b₁&lt;b₂&lt;b₃&lt;b₄, so they have nothing valid to apply here.</div>
 </div>
 <div class="controls">
   <div class="ctrl-panel"><div class="ctrl-title cfg-a">Config A</div><div id="sliders-a"></div></div>
@@ -255,6 +259,7 @@ function setModel(m, btn) {
   document.getElementById('btn-permute').title = grmMode ? 'Disabled: ordering constraint eliminates non-trivial permutations' : '';
   document.getElementById('btn-reverse').disabled = grmMode;
   document.getElementById('btn-reverse').title = grmMode ? 'Disabled: ordering constraint eliminates non-trivial permutations' : '';
+  document.getElementById('grm-btn-note').style.display = grmMode ? 'block' : 'none';
   rebuildSliders(); render();
 }
 
@@ -262,6 +267,7 @@ document.getElementById('math-panel').classList.add('visible');
 document.getElementById('model-note').textContent = NOTES['grm'];
 document.getElementById('btn-permute').disabled = true;
 document.getElementById('btn-reverse').disabled = true;
+document.getElementById('grm-btn-note').style.display = 'block';
 rebuildSliders(); render();
 </script>
 </body>

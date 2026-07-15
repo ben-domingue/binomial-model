@@ -18,8 +18,7 @@ Adjust θ, asymmetry $s$, categories $K$, and discrimination $a$ to see how thre
 
 ```{ojs}
 viewof theta = Inputs.range([-3, 3], {label: "θ (ability)", step: 0.05, value: 0.5})
-viewof asym  = Inputs.range([-Math.log(8), Math.log(8)],
-                 {label: "s (asymmetry)", step: 0.05, value: Math.log(8)})
+viewof asym  = Inputs.range([-2.1, 2.1], {label: "s (asymmetry)", step: 0.05, value: 2.1})
 viewof K     = Inputs.range([3, 7], {label: "K (categories)", step: 1, value: 5})
 viewof a     = Inputs.range([0.5, 2.5], {label: "a (discrimination)", step: 0.05, value: 1.5})
 ```

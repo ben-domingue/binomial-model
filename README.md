@@ -24,6 +24,7 @@ src/
   make_figures.R                 # generates most simulation + empirical figures
   isoerf_distance2.R             # isoERF distance landscape figure
   isoerf_distance2_altcontour.R  # alternate-contour variant
+  isoerf_neighborhood_vs_a.R     # SI: near-isoERF neighborhood size vs. discrimination
   npspline.R                     # nonparametric spline figure
   fig_single_item_example.R      # single-item illustrative figure
   fig_np_boundary_mixture.R      # nonparametric boundary mixture figure
@@ -65,9 +66,10 @@ directory.
 | 6 | `Rscript fig_single_item_example.R` | single-item illustrative figure |
 | 7 | `Rscript isoerf_distance2.R` | isoERF distance landscape figure |
 | 8 | `Rscript isoerf_distance2_altcontour.R` | alt-contour variant of the above |
-| 9 | `Rscript fig_np_boundary_mixture.R` | nonparametric boundary mixture figure |
-| 10 | `Rscript fig_np_extreme_categories.R` | extreme-category behavior figure (SI) |
-| 11 | `Rscript make_si_dataset_table.R` | supplementary dataset table |
+| 9 | `Rscript isoerf_neighborhood_vs_a.R` | near-isoERF neighborhood size vs. discrimination (SI) |
+| 10 | `Rscript fig_np_boundary_mixture.R` | nonparametric boundary mixture figure |
+| 11 | `Rscript fig_np_extreme_categories.R` | extreme-category behavior figure (SI) |
+| 12 | `Rscript make_si_dataset_table.R` | supplementary dataset table |
 
 ## Figure inventory
 
@@ -77,6 +79,7 @@ directory.
 |--------|-------------|
 | `isoerf_distance2.R` | isoERF distance landscape (Figure 1) |
 | `isoerf_distance2_altcontour.R` | Figure 1, alternate-contour variant |
+| `isoerf_neighborhood_vs_a.R` | Near-isoERF neighborhood size vs. discrimination, continuous sweep extending Figure 1 (SI Figure S2) |
 | `npspline.R` | KL-divergence-by-category figure |
 | `fig_single_item_example.R` | Single-item illustrative example |
 | `fig_np_boundary_mixture.R` | Nonparametric boundary mixture illustration |

@@ -55,6 +55,9 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
 
 <div class="widget" id="main-widget">
 
+<div class="drag-desc">
+  Each curve is a category response function P(X=k|θ) for the model seeded above. <strong>Click and drag any curve up or down</strong> — the editor automatically shifts two other categories in the opposite direction at that θ so total probability stays at 1 and the expected response function (right panel, dashed = original) stays exactly fixed. This is a hands-on way to explore the <a href="isoerf-degeneracy-explorer.html" style="color:#378ADD">isoERF set</a>: every curve you can reach by dragging has a different CRF but an identical ERF to the seed. Try pulling one category up in the middle of the θ range and watch the others compensate, or hit <strong>Randomize</strong> to jump to an unrelated point on the same isoERF fiber. If a fast or imprecise drag leaves the curve jagged, <strong>Smooth active curve</strong> smooths whichever category you last edited using the same probability-preserving mechanism, so the ERF stays locked.
+</div>
 <div class="drag-model-toggle">
   <button class="active" onclick="setDragModel('grm',this)">Seed from GRM</button>
   <button onclick="setDragModel('gpcm',this)">Seed from GPCM</button>
@@ -63,6 +66,7 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
 <div class="drag-btns">
   <button onclick="resetDrag()">Reset to seed</button>
   <button onclick="randomizeDrag()">Randomize</button>
+  <button onclick="smoothActive()">Smooth active curve</button>
   <span id="drag-active-cat" style="font-size:11px;color:#888;padding:4px 8px"></span>
 </div>
 <div class="drag-legend" id="drag-legend"></div>
@@ -87,7 +91,7 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
 <script src="isoerf-common.js"></script>
 <script>
 let dragModel = 'grm', dragCRF = null, seedERF = null, dragChart = null, erfChart2 = null;
-let isDragging = false, dragCat = -1, lastDragX = -1;
+let isDragging = false, dragCat = -1, lastDragX = -1, lastDragY = 0, lastEditedCat = -1;
 function seedDrag(mdl) { mdl = mdl || dragModel; const r = computeFull({ a: 1.2, b: [-1.5, -0.5, 0.5, 1.5] }, mdl); dragCRF = r.crf.map(c => [...c]); seedERF = r.erf.map(v => v); }
 function computeERFfromCRF(crf) { return TH.map((_, i) => CATS.reduce((s, k) => s + k * crf[k][i], 0)); }
 function adjustCRF(cat, i, newVal) {
@@ -109,8 +113,30 @@ function renderDrag() {
 function buildDragLegend() { const el = document.getElementById('drag-legend'); el.innerHTML = ''; CATS.forEach(k => { const s = document.createElement('span'); s.innerHTML = `<span class="drag-leg-swatch" style="background:${CAT_COLS[k]}"></span>${CAT_NAMES[k]}`; el.appendChild(s); }); const s2 = document.createElement('span'); s2.innerHTML = `<span class="drag-leg-swatch" style="background:#888;opacity:0.5"></span>Seed ERF (dashed)`; el.appendChild(s2); }
 function initDragCanvas() {
   const canvas = document.getElementById('drag-crf');
-  function onStart(e) { e.preventDefault(); const { clientX, clientY } = e.touches ? e.touches[0] : e; const rect = canvas.getBoundingClientRect(); const tIdx = Math.round((clientX - rect.left) / rect.width * (TH.length - 1)); const prob = 1 - (clientY - rect.top) / rect.height; let best = -1, bestD = 1e9; CATS.forEach(k => { const d = Math.abs(dragCRF[k][tIdx] - prob); if (d < bestD) { bestD = d; best = k; } }); dragCat = bestD < 0.12 ? best : -1; if (dragCat >= 0) { isDragging = true; lastDragX = tIdx; document.getElementById('drag-cur-cat').textContent = CAT_NAMES[dragCat]; document.getElementById('drag-active-cat').textContent = 'Editing: ' + CAT_NAMES[dragCat]; } }
-  function onMove(e) { if (!isDragging || dragCat < 0) return; e.preventDefault(); const { clientX, clientY } = e.touches ? e.touches[0] : e; const rect = canvas.getBoundingClientRect(); const tIdx = Math.max(0, Math.min(TH.length - 1, Math.round((clientX - rect.left) / rect.width * (TH.length - 1)))); const prob = 1 - (clientY - rect.top) / rect.height; const lo = Math.min(lastDragX, tIdx), hi = Math.max(lastDragX, tIdx); for (let i = lo; i <= hi; i++) adjustCRF(dragCat, i, prob); lastDragX = tIdx; renderDrag(); }
+  function onStart(e) { e.preventDefault(); const { clientX, clientY } = e.touches ? e.touches[0] : e; const rect = canvas.getBoundingClientRect(); const tIdx = Math.round((clientX - rect.left) / rect.width * (TH.length - 1)); const prob = 1 - (clientY - rect.top) / rect.height; let best = -1, bestD = 1e9; CATS.forEach(k => { const d = Math.abs(dragCRF[k][tIdx] - prob); if (d < bestD) { bestD = d; best = k; } }); dragCat = bestD < 0.12 ? best : -1; if (dragCat >= 0) { isDragging = true; lastDragX = tIdx; lastDragY = prob; lastEditedCat = dragCat; document.getElementById('drag-cur-cat').textContent = CAT_NAMES[dragCat]; document.getElementById('drag-active-cat').textContent = 'Editing: ' + CAT_NAMES[dragCat]; } }
+  function onMove(e) {
+    if (!isDragging || dragCat < 0) return;
+    e.preventDefault();
+    const { clientX, clientY } = e.touches ? e.touches[0] : e;
+    const rect = canvas.getBoundingClientRect();
+    const tIdx = Math.max(0, Math.min(TH.length - 1, Math.round((clientX - rect.left) / rect.width * (TH.length - 1))));
+    const prob = 1 - (clientY - rect.top) / rect.height;
+    // Interpolate linearly from the last point to this one instead of painting
+    // a flat shelf across the swept range, so the curve follows the mouse
+    // smoothly even when a mousemove jumps several grid points at once.
+    if (tIdx === lastDragX) {
+      adjustCRF(dragCat, tIdx, prob);
+    } else {
+      const step = tIdx > lastDragX ? 1 : -1;
+      for (let i = lastDragX; ; i += step) {
+        const t = (i - lastDragX) / (tIdx - lastDragX);
+        adjustCRF(dragCat, i, lastDragY + t * (prob - lastDragY));
+        if (i === tIdx) break;
+      }
+    }
+    lastDragX = tIdx; lastDragY = prob;
+    renderDrag();
+  }
   function onEnd() { isDragging = false; dragCat = -1; document.getElementById('drag-active-cat').textContent = ''; }
   canvas.addEventListener('mousedown', onStart); canvas.addEventListener('mousemove', onMove); canvas.addEventListener('mouseup', onEnd); canvas.addEventListener('mouseleave', onEnd);
   canvas.addEventListener('touchstart', onStart, { passive: false }); canvas.addEventListener('touchmove', onMove, { passive: false }); canvas.addEventListener('touchend', onEnd);
@@ -118,6 +144,18 @@ function initDragCanvas() {
 function setDragModel(m, btn) { dragModel = m; document.querySelectorAll('.drag-model-toggle button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); seedDrag(m); renderDrag(); }
 function resetDrag() { seedDrag(dragModel); renderDrag(); }
 function randomizeDrag() { for (let i = 0; i < TH.length; i++) { const pts = [0, ...Array.from({ length: K - 1 }, () => Math.random()), 1].sort((a, b) => a - b); CATS.forEach(k => { dragCRF[k][i] = pts[k + 1] - pts[k]; }); } renderDrag(); }
+function smoothActive() {
+  if (lastEditedCat < 0) { document.getElementById('drag-active-cat').textContent = 'Drag a curve first, then smooth it'; return; }
+  const src = [...dragCRF[lastEditedCat]], win = 4;
+  const smoothed = src.map((_, i) => {
+    const lo = Math.max(0, i - win), hi = Math.min(src.length - 1, i + win);
+    let s = 0, n = 0;
+    for (let j = lo; j <= hi; j++) { s += src[j]; n++; }
+    return s / n;
+  });
+  smoothed.forEach((v, i) => adjustCRF(lastEditedCat, i, v));
+  renderDrag();
+}
 
 seedDrag(); buildDragLegend(); initDragCanvas(); renderDrag();
 </script>

@@ -134,11 +134,10 @@ function drawGrmHeatmap() {
   ctx.fillText('b₁≥b₂', 4, H - 4);
   if (b3py > 14) ctx.fillText('b₂≥b₃', 4, b3py - 4);
   const rx = Math.round(toPixel(grmState.rb1, W)), ry = Math.round((1 - toPixel(grmState.rb2, 1)) * H);
-  ctx.strokeStyle = COL_REF; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(rx - 6, ry - 6); ctx.lineTo(rx + 6, ry + 6); ctx.moveTo(rx + 6, ry - 6); ctx.lineTo(rx - 6, ry + 6); ctx.stroke();
+  drawHaloCross(ctx, rx, ry, 6, COL_REF);
   if (grmAdmissible(grmState.selB1, grmState.selB2)) {
     const sx = Math.round(toPixel(grmState.selB1, W)), sy = Math.round((1 - toPixel(grmState.selB2, 1)) * H);
-    ctx.fillStyle = COL_B; ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill();
+    drawHaloDot(ctx, sx, sy, 5, COL_B);
   }
   const r = grmAdmissible(grmState.selB1, grmState.selB2) ? rmse(grmERFfn(grmState.a, [grmState.rb1, grmState.rb2, grmState.b3, grmState.b4]), grmERFfn(grmState.a, [grmState.selB1, grmState.selB2, grmState.b3, grmState.b4])) : null;
   document.getElementById('grm-ref-coords').textContent = `b₁=${grmState.rb1.toFixed(2)}, b₂=${grmState.rb2.toFixed(2)}`;
@@ -187,8 +186,7 @@ function drawGpcmHeatmap() {
   const ctx = canvas.getContext('2d');
   drawBaseHeatmap(ctx, W, H, gpcmMfState.grid, null);
   const rx = Math.round(toPixel(gpcmMfState.rb1, W)), ry = Math.round((1 - toPixel(gpcmMfState.rb2, 1)) * H);
-  ctx.strokeStyle = COL_REF; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(rx - 7, ry - 7); ctx.lineTo(rx + 7, ry + 7); ctx.moveTo(rx + 7, ry - 7); ctx.lineTo(rx - 7, ry + 7); ctx.stroke();
+  drawHaloCross(ctx, rx, ry, 7, COL_REF);
   const refFull = [gpcmMfState.rb1, gpcmMfState.rb2, gpcmMfState.b3, gpcmMfState.b4];
   const refERF = gpcmERFfn(gpcmMfState.a, refFull);
   allPerms(refFull).forEach((p, idx) => {
@@ -197,14 +195,12 @@ function drawGpcmHeatmap() {
     const r = rmse(refERF, gpcmERFfn(gpcmMfState.a, p));
     const col = rmseColor(r);
     const isSelected = gpcmMfState.selIsPerm && gpcmMfState.selPermIdx === idx;
-    ctx.fillStyle = col; ctx.strokeStyle = isSelected ? '#fff' : col; ctx.lineWidth = isSelected ? 2 : 1;
-    ctx.beginPath(); ctx.arc(px2, py2, isSelected ? 7 : 5, 0, Math.PI * 2); ctx.fill();
-    if (isSelected) ctx.stroke();
+    drawHaloDot(ctx, px2, py2, isSelected ? 7 : 5, col);
+    if (isSelected) { ctx.strokeStyle = '#333'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(px2, py2, 7, 0, Math.PI * 2); ctx.stroke(); }
   });
   if (!gpcmMfState.selIsPerm) {
     const sx = Math.round(toPixel(gpcmMfState.selB1, W)), sy = Math.round((1 - toPixel(gpcmMfState.selB2, 1)) * H);
-    ctx.fillStyle = COL_B; ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(sx, sy, 5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    drawHaloDot(ctx, sx, sy, 5, COL_B, 2);
   }
   const selB = [gpcmMfState.selB1, gpcmMfState.selB2, gpcmMfState.b3, gpcmMfState.b4];
   const r = rmse(refERF, gpcmERFfn(gpcmMfState.a, selB));

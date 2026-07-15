@@ -103,6 +103,79 @@ function buildGrid(erfFn, refB1, refB2, b3, b4, a) {
   return grid;
 }
 
+/* Pale-yellow -> orange -> dark-maroon sequential ramp (matches the RMISE
+   colorbar used in the manuscript's static isoERF-distance figure). */
+const HEAT_STOPS = [
+  [0.0, [254, 248, 190]], [0.1, [253, 234, 167]], [0.2, [249, 216, 130]], [0.3, [248, 193, 77]],
+  [0.4, [245, 167, 33]], [0.5, [242, 138, 0]], [0.6, [238, 104, 0]], [0.7, [223, 68, 0]],
+  [0.8, [196, 37, 0]], [0.9, [162, 12, 14]], [1.0, [134, 2, 33]]
+];
+function heatColor(v) {
+  v = Math.min(Math.max(v, 0), 1);
+  for (let i = 0; i < HEAT_STOPS.length - 1; i++) {
+    const [f0, c0] = HEAT_STOPS[i], [f1, c1] = HEAT_STOPS[i + 1];
+    if (v <= f1) {
+      const t = (v - f0) / (f1 - f0);
+      return `rgb(${Math.round(c0[0] + t * (c1[0] - c0[0]))},${Math.round(c0[1] + t * (c1[1] - c0[1]))},${Math.round(c0[2] + t * (c1[2] - c0[2]))})`;
+    }
+  }
+  return `rgb(${HEAT_STOPS[HEAT_STOPS.length - 1][1].join(',')})`;
+}
+
+/* Simplified marching squares: returns line segments [[x1,y1],[x2,y2]] where
+   `grid` crosses `level`. `cellOk(ix,iy)` can veto a cell (e.g. inadmissible
+   region) so contour lines don't bleed into the grayed-out area. */
+function marchingSquares(grid, W, H, level, cellOk) {
+  const N = MF_N;
+  const px = ix => ix * W / (N - 1), py = iy => (N - 1 - iy) * H / (N - 1);
+  const interp = (x1, y1, v1, x2, y2, v2) => { const t = (level - v1) / (v2 - v1); return [x1 + t * (x2 - x1), y1 + t * (y2 - y1)]; };
+  const segs = [];
+  for (let iy = 0; iy < N - 1; iy++) {
+    for (let ix = 0; ix < N - 1; ix++) {
+      if (cellOk && !cellOk(ix, iy)) continue;
+      const vbl = grid[iy][ix], vbr = grid[iy][ix + 1], vtr = grid[iy + 1][ix + 1], vtl = grid[iy + 1][ix];
+      const xbl = px(ix), ybl = py(iy), xbr = px(ix + 1), ybr = py(iy), xtr = px(ix + 1), ytr = py(iy + 1), xtl = px(ix), ytl = py(iy + 1);
+      const bl = vbl >= level, br = vbr >= level, tr = vtr >= level, tl = vtl >= level;
+      const c = (bl ? 1 : 0) | (br ? 2 : 0) | (tr ? 4 : 0) | (tl ? 8 : 0);
+      if (c === 0 || c === 15) continue;
+      const a = () => interp(xbl, ybl, vbl, xbr, ybr, vbr), b = () => interp(xbr, ybr, vbr, xtr, ytr, vtr);
+      const cc = () => interp(xtr, ytr, vtr, xtl, ytl, vtl), d = () => interp(xtl, ytl, vtl, xbl, ybl, vbl);
+      const avg = (vbl + vbr + vtr + vtl) / 4;
+      switch (c) {
+        case 1: segs.push([d(), a()]); break;
+        case 2: segs.push([a(), b()]); break;
+        case 3: segs.push([d(), b()]); break;
+        case 4: segs.push([b(), cc()]); break;
+        case 5: if (avg >= level) { segs.push([d(), cc()]); segs.push([a(), b()]); } else { segs.push([d(), a()]); segs.push([cc(), b()]); } break;
+        case 6: segs.push([a(), cc()]); break;
+        case 7: segs.push([d(), cc()]); break;
+        case 8: segs.push([cc(), d()]); break;
+        case 9: segs.push([cc(), a()]); break;
+        case 10: if (avg >= level) { segs.push([a(), d()]); segs.push([b(), cc()]); } else { segs.push([a(), b()]); segs.push([d(), cc()]); } break;
+        case 11: segs.push([cc(), b()]); break;
+        case 12: segs.push([b(), d()]); break;
+        case 13: segs.push([b(), a()]); break;
+        case 14: segs.push([a(), d()]); break;
+      }
+    }
+  }
+  return segs;
+}
+function strokeSegs(ctx, segs) { ctx.beginPath(); segs.forEach(([[x1, y1], [x2, y2]]) => { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); }); ctx.stroke(); }
+
+/* White-halo markers so ✕/● stay legible against every part of the
+   pale-yellow -> dark-maroon heatmap ramp, not just the light end. */
+function drawHaloCross(ctx, x, y, r, color, lineWidth = 2.5) {
+  ctx.lineWidth = lineWidth + 2.5; ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+  ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r); ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
+  ctx.lineWidth = lineWidth; ctx.strokeStyle = color;
+  ctx.beginPath(); ctx.moveTo(x - r, y - r); ctx.lineTo(x + r, y + r); ctx.moveTo(x + r, y - r); ctx.lineTo(x - r, y + r); ctx.stroke();
+}
+function drawHaloDot(ctx, x, y, r, color, haloWidth = 1.5) {
+  ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.beginPath(); ctx.arc(x, y, r + haloWidth, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+}
+
 function drawBaseHeatmap(ctx, W, H, grid, admissibleFn) {
   const flat = [].concat(...grid).filter(v => isFinite(v)).sort((a, b) => a - b);
   const maxVal = flat[Math.floor(flat.length * 0.95)] || 1;
@@ -113,27 +186,24 @@ function drawBaseHeatmap(ctx, W, H, grid, admissibleFn) {
       const px = Math.round(ix * W / MF_N), py = Math.round((MF_N - 1 - iy) * H / MF_N);
       const pw = Math.ceil(W / MF_N) + 1, ph = Math.ceil(H / MF_N) + 1;
       if (admissibleFn && !admissibleFn(b1, b2)) { ctx.fillStyle = 'rgba(120,120,120,0.18)'; ctx.fillRect(px, py, pw, ph); continue; }
-      const v = Math.min(grid[iy][ix] / maxVal, 1);
-      ctx.fillStyle = `rgb(${Math.round(v * 186 + (1 - v) * 8)},${Math.round(v * 117 + (1 - v) * 158)},${Math.round(v * 23 + (1 - v) * 117)})`;
+      ctx.fillStyle = heatColor(grid[iy][ix] / maxVal);
       ctx.fillRect(px, py, pw, ph);
     }
   }
+  const cellOk = admissibleFn ? (ix, iy) => {
+    const b1a = toVal(ix / (MF_N - 1)), b2a = toVal(iy / (MF_N - 1)), b1b = toVal((ix + 1) / (MF_N - 1)), b2b = toVal((iy + 1) / (MF_N - 1));
+    return admissibleFn(b1a, b2a) && admissibleFn(b1b, b2a) && admissibleFn(b1a, b2b) && admissibleFn(b1b, b2b);
+  } : null;
+  ctx.strokeStyle = 'rgba(90,90,90,0.55)'; ctx.lineWidth = 1; ctx.setLineDash([]);
+  for (let k = 1; k <= 8; k++) strokeSegs(ctx, marchingSquares(grid, W, H, maxVal * k / 9, cellOk));
   const thresh = maxVal * 0.04;
-  ctx.strokeStyle = 'rgba(255,255,255,0.85)'; ctx.lineWidth = 2;
-  for (let iy = 0; iy < MF_N - 1; iy++) {
-    for (let ix = 0; ix < MF_N - 1; ix++) {
-      const b1 = toVal(ix / (MF_N - 1)), b2 = toVal(iy / (MF_N - 1));
-      if (admissibleFn && !admissibleFn(b1, b2)) continue;
-      const inC = (v) => v < thresh;
-      if ((inC(grid[iy][ix]) || inC(grid[iy][ix + 1]) || inC(grid[iy + 1]?.[ix] ?? 1) || inC(grid[iy + 1]?.[ix + 1] ?? 1)) &&
-        !(inC(grid[iy][ix]) && inC(grid[iy][ix + 1]) && inC(grid[iy + 1]?.[ix] ?? 1) && inC(grid[iy + 1]?.[ix + 1] ?? 1))) {
-        ctx.beginPath(); ctx.arc(Math.round((ix + 0.5) * W / MF_N), Math.round((MF_N - 1.5 - iy) * H / MF_N), 1.8, 0, Math.PI * 2); ctx.stroke();
-      }
-    }
-  }
-  ctx.fillStyle = 'rgba(255,255,255,0.6)'; ctx.font = '10px sans-serif';
-  ctx.fillText('b₁ →', W / 2 - 14, H - 3);
-  ctx.save(); ctx.translate(8, H / 2 + 12); ctx.rotate(-Math.PI / 2); ctx.fillText('b₂ →', 0, 0); ctx.restore();
+  ctx.strokeStyle = COL_B; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
+  strokeSegs(ctx, marchingSquares(grid, W, H, thresh, cellOk));
+  ctx.setLineDash([]);
+  ctx.font = '10px sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.fillStyle = 'rgba(55,55,55,0.9)';
+  ctx.strokeText('b₁ →', W / 2 - 14, H - 3); ctx.fillText('b₁ →', W / 2 - 14, H - 3);
+  ctx.save(); ctx.translate(8, H / 2 + 12); ctx.rotate(-Math.PI / 2);
+  ctx.strokeText('b₂ →', 0, 0); ctx.fillText('b₂ →', 0, 0); ctx.restore();
   return maxVal;
 }
 
