@@ -255,8 +255,7 @@ save_pdf(p, "fig_imv_floor", w=8, h=4.5)
 message("fig_rmse_sim")
 lpos <- lpos_fn(res, "rmse")
 p <- ggplot(res, aes(x=asym, y=rmse, colour=model_label, group=model_label)) +
-  geom_smooth(data=function(d) filter(d, model_label!="GPCM"),
-              method="gam", formula=y~s(x,bs="cs"), se=TRUE, linewidth=0.8, alpha=0.12) +
+  geom_smooth(method="gam", formula=y~s(x,bs="cs"), se=TRUE, linewidth=0.8, alpha=0.12) +
   annotate("rect", xmin=log(8), xmax=log(8)+3, ymin=-Inf, ymax=Inf, fill="white", colour=NA) +
   geom_label_repel(data=lpos, aes(x=asym, y=y_val, label=model_label),
                    size=2.6, hjust=0, nudge_x=log(8)+0.3-lpos$asym,
