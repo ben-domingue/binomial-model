@@ -129,6 +129,9 @@ make_imv_pair <- function(data, v1, v2, l1, l2, y_lab, excl = "GPCM") {
     }
   ))
   lpos$metric <- factor(lpos$metric, levels = c(l1, l2))
+  ## don't label the excluded reference model: it has no curve, and its label
+  ## would sit on the y = 0 reference line and read as an axis label
+  if (!is.null(excl)) lpos <- lpos[!lpos$model_label %in% excl, ]
   ggplot(long, aes(x = asym, y = y, colour = model_label, group = model_label)) +
     annotate("segment", x = -log(8), xend = log(8), y = 0, yend = 0,
              linetype = "dashed", colour = "grey60") +
@@ -325,6 +328,7 @@ make_imv_pair_np <- function(data, v1, v2, l1, l2, y_lab, excl="GPCM") {
     }
   ))
   lpos$metric <- factor(lpos$metric, levels=c(l1,l2))
+  if (!is.null(excl)) lpos <- lpos[!lpos$model_label %in% excl, ]  # see make_imv_pair
   ggplot(long, aes(x=flex, y=y, colour=model_label, group=model_label)) +
     annotate("segment", x=0, xend=1, y=0, yend=0, linetype="dashed", colour="grey60") +
     geom_smooth(data=function(d) if(is.null(excl)) d else filter(d,!model_label %in% excl),
