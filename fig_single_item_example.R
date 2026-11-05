@@ -128,7 +128,7 @@ plot_df <- bind_rows(
   # ERF panel
   bind_rows(lapply(models, function(m)
     data.frame(theta=theta_g, prob=erf_fn(probs_list[[m]], K),
-               model=m, panel="ERF"))),
+               model=m, panel="ERF / (K-1)"))),
   # One panel per category
   bind_rows(lapply(0:(K-1L), function(k)
     bind_rows(lapply(models, function(m)
@@ -137,7 +137,7 @@ plot_df <- bind_rows(
 ) |>
   mutate(
     model = factor(model, levels=c("True","GPCM","Binom 1PL")),
-    panel = factor(panel, levels=c("ERF", paste0("k = ", 0:(K-1L))))
+    panel = factor(panel, levels=c("ERF / (K-1)", paste0("k = ", 0:(K-1L))))
   )
 
 # ── IMV (20% cell holdout, all items) ─────────────────────────────────────────
