@@ -118,7 +118,7 @@ pB <- ggplot(share_df, aes(x = flex, y = share, colour = group)) +
 
 p_final <- pA / pB + plot_layout(heights = c(1, 1))
 
-ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/fig_np_extreme_categories.pdf",
+ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs/fig_np_extreme_categories.pdf",
        p_final, width = 8.5, height = 8, device = cairo_pdf)
 cat("saved fig_np_extreme_categories.pdf\n")
 cat("\nExtreme- vs. interior-category share by flex:\n")

@@ -53,7 +53,7 @@ suppressPackageStartupMessages({
 source("/home/ben/Dropbox/projects/binomial_model/src/irw_fetch_cached.R")
 
 set.seed(20260717)
-OUT <- "/home/ben/Dropbox/Apps/Overleaf/binomial_model/fig_empirical_illustrative.pdf"
+OUT <- "/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs/fig_empirical_illustrative.pdf"
 
 MIN_N     <- 200
 MAX_ITEMS <- 60L

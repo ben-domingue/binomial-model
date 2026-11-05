@@ -34,7 +34,7 @@ suppressPackageStartupMessages({
 source("/home/ben/Dropbox/projects/binomial_model/src/irw_fetch_cached.R")
 
 set.seed(20260717)
-OUT <- "/home/ben/Dropbox/Apps/Overleaf/binomial_model/fig_threshold_stripchart.pdf"
+OUT <- "/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs/fig_threshold_stripchart.pdf"
 
 fit_thresholds <- function(tab) {
   message("=== ", tab, " ===")

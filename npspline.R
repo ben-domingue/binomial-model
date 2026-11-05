@@ -156,6 +156,6 @@ p_final <- (pA | pB | pC) +
   ) &
   theme(legend.justification = "center")
 
-ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/fig_kl_category.pdf",
+ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs/fig_kl_category.pdf",
        p_final, width = 11, height = 4, device = cairo_pdf)
 cat("saved fig_kl_category.pdf\n")

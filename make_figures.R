@@ -1,5 +1,5 @@
 ## make_figures.R
-## Generates all manuscript figure PDFs into the Overleaf working directory.
+## Generates all manuscript figure PDFs into the Overleaf project's figs/ folder.
 ## Run from: src/ (this directory). Output goes to OUT below.
 ## Rscript make_figures.R
 
@@ -12,7 +12,7 @@ suppressPackageStartupMessages({
   library(RColorBrewer)
 })
 
-OUT  <- "/home/ben/Dropbox/Apps/Overleaf/binomial_model"
+OUT  <- "/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs"
 SIM  <- "/home/ben/Dropbox/projects/binomial_model/src/sim"
 VIG  <- "/home/ben/Dropbox/projects/binomial_model/src/irw"
 

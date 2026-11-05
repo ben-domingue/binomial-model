@@ -55,6 +55,6 @@ p <- ggplot(mix_df, aes(x = theta, y = g, colour = k)) +
   theme(legend.position = "bottom", panel.grid.minor = element_blank(),
         strip.background = element_rect(fill = "grey92"))
 
-ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/fig_np_boundary_mixture.pdf",
+ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs/fig_np_boundary_mixture.pdf",
        p, width = 11, height = 3.2, device = cairo_pdf)
 cat("saved fig_np_boundary_mixture.pdf\n")

@@ -219,5 +219,5 @@ p <- ggplot(plot_df,
         panel.spacing    = unit(0.5, "lines"),
         plot.subtitle    = element_text(size=8, hjust=0.5, colour="grey30"))
 
-ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/fig_single_item_example.pdf", p, width=6.5, height=4.5)
+ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs/fig_single_item_example.pdf", p, width=6.5, height=4.5)
 message("Saved fig_single_item_example.pdf")

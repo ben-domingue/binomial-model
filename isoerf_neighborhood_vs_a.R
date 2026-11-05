@@ -128,6 +128,6 @@ p_final <- (p_frac / p_min) +
   plot_layout(guides = "collect") &
   theme(legend.position = "bottom")
 
-ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/fig_isoerf_neighborhood_vs_a.pdf",
+ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs/fig_isoerf_neighborhood_vs_a.pdf",
        p_final, width = 9.5, height = 9)
 cat("saved\n")
