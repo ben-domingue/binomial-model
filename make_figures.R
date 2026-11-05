@@ -329,29 +329,47 @@ make_imv_pair_np <- function(data, v1, v2, l1, l2, y_lab, excl="GPCM") {
   ))
   lpos$metric <- factor(lpos$metric, levels=c(l1,l2))
   if (!is.null(excl)) lpos <- lpos[!lpos$model_label %in% excl, ]  # see make_imv_pair
+  ## Deterministic label layout (ggrepel left overlaps here): within each panel,
+  ## sort labels by curve end-point and push neighbours apart to a minimum gap.
+  ## Facets share a y scale, so the gap is set from the global label range.
+  gap <- 0.05 * diff(range(c(0, lpos$y_val))) * 1.2
+  spread <- function(y) {
+    o <- order(y); ys <- y[o]
+    for (it in 1:500) {
+      moved <- FALSE
+      for (i in seq_along(ys)[-1]) if (ys[i] - ys[i-1] < gap) {
+        m <- (ys[i] + ys[i-1]) / 2; ys[i-1] <- m - gap/2; ys[i] <- m + gap/2; moved <- TRUE
+      }
+      if (!moved) break
+    }
+    y[o] <- ys; y
+  }
+  lpos$y_lab <- ave(lpos$y_val, lpos$metric, FUN = spread)
   ggplot(long, aes(x=flex, y=y, colour=model_label, group=model_label)) +
     annotate("segment", x=0, xend=1, y=0, yend=0, linetype="dashed", colour="grey60") +
     geom_smooth(data=function(d) if(is.null(excl)) d else filter(d,!model_label %in% excl),
                 method="gam", formula=y~s(x,bs="cs"), se=TRUE, linewidth=0.8, alpha=0.12) +
-    annotate("rect", xmin=1, xmax=1.35, ymin=-Inf, ymax=Inf, fill="white", colour=NA) +
-    geom_label_repel(data=lpos, aes(x=flex,y=y_val,label=model_label),
-                     size=2.6, hjust=0, nudge_x=1.05-lpos$flex,
-                     direction="y", segment.size=0.3, segment.color="grey50",
-                     box.padding=0.2, label.padding=0.15,
-                     show.legend=FALSE, xlim=c(1,1.35)) +
+    annotate("rect", xmin=1, xmax=1.5, ymin=-Inf, ymax=Inf, fill="white", colour=NA) +
+    geom_segment(data=lpos, aes(x=flex, y=y_val, xend=1.04, yend=y_lab),
+                 colour="grey50", linewidth=0.3, inherit.aes=FALSE) +
+    geom_label(data=lpos, aes(x=1.04, y=y_lab, label=model_label, colour=model_label),
+               size=2.6, hjust=0, label.padding=unit(0.15, "lines"),
+               show.legend=FALSE, inherit.aes=FALSE) +
     facet_wrap(~metric) +
     scale_colour_manual(values=model_colors) +
     scale_x_continuous(name="flex  (0 = GPCM boundaries;  1 = fully nonparametric)",
-                       limits=c(0,1.35), breaks=c(0,0.25,0.5,0.75,1),
+                       limits=c(0,1.5), breaks=c(0,0.25,0.5,0.75,1),
                        labels=c("0\n(GPCM)","0.25","0.5","0.75","1\n(NP)"),
                        expand=expansion(mult=c(0.02,0))) +
+    ## extra headroom so labels of curves ending near the top can spread out
+    scale_y_continuous(expand=expansion(mult=c(0.05,0.18))) +
     coord_cartesian(clip="off") + ylab(y_lab)
 }
 
 ## ── fig_np_imv ────────────────────────────────────────────────────────────
 message("fig_np_imv")
 p <- make_imv_pair_np(res_np, "imv_c", "imv_t", "ω_c (category)", "ω_t (threshold)",
-                      "IMV(model, GPCM)  [positive = GPCM wins;  negative = model wins]")
+                      "IMV(model, GPCM)\n[positive = GPCM wins;  negative = model wins]")
 save_pdf(p, "fig_np_imv", w=8, h=4.5)
 
 ## ── fig_np_imv_oracle ─────────────────────────────────────────────────────
