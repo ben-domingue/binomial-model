@@ -248,7 +248,7 @@ save_pdf(p, "fig_imv_gpcm", w=8, h=4.5)
 message("fig_imv_floor")
 res_1pl <- filter(res, model_label != "Binom 1PL (logit)")
 p <- make_imv_pair(res_1pl, "imv_c_1pl", "imv_t_1pl", "ω_c (category)", "ω_t (threshold)",
-                   "IMV(1PL-logit, model)  [positive = model wins]", excl=NULL)
+                   "IMV(Binom 1PL (logit), model)  [positive = model wins]", excl=NULL)
 save_pdf(p, "fig_imv_floor", w=8, h=4.5)
 
 ## ── fig_rmse_sim ──────────────────────────────────────────────────────────
