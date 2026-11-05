@@ -20,7 +20,7 @@ change — without installing anything. Source for the site lives in
 ## Repository layout
 
 ```
-src/
+./  (repository root)
   make_figures.R                 # generates most simulation + empirical figures
   isoerf_distance2.R             # isoERF distance landscape figure
   isoerf_distance2_altcontour.R  # alternate-contour variant
@@ -85,7 +85,7 @@ Steps 1–3 are computationally expensive and only need to be rerun if
 simulation parameters or the empirical dataset collection change. Their
 outputs are precomputed and included in the repository (`sim/*.rds`,
 `irw/poly_compare_data/multi_*.rds`). Steps 4–14 can run in any order and
-should be run from this `src/` directory; all are fast except 13–14, which
+should be run from the repository root; all are fast except 13–14, which
 refit two empirical datasets.
 
 | Step | Command | Output |
