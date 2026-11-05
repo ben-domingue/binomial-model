@@ -30,6 +30,7 @@ change — without installing anything. Source for the site lives in
   fig_np_boundary_mixture.R      # nonparametric boundary mixture figure
   fig_np_extreme_categories.R    # extreme-category behavior figure (SI)
   make_si_dataset_table.R        # supplementary dataset table
+  kl_decomposition.R             # exact log-loss decomposition (structural vs. link), Table 2
   fig_threshold_stripchart.R     # §4.3 two illustrative datasets (refits from IRW)
   fig_empirical_illustrative.R   # earlier §4.3 CRF/ERF version (not in manuscript)
   irw_fetch_cached.R             # helper: irw::irw_fetch() with a /tmp cache
@@ -104,6 +105,7 @@ refit two empirical datasets.
 | 12 | `Rscript make_si_dataset_table.R` | supplementary dataset table |
 | 13 | `Rscript fig_threshold_stripchart.R` | §4.3 illustrative-datasets figure |
 | 14 | `Rscript fig_empirical_illustrative.R` | earlier §4.3 figure (optional; not in manuscript) |
+| 15 | `Rscript kl_decomposition.R` | exact structural/link log-loss decomposition table (`tab_kl_decomp.tex`) |
 
 ## Figure inventory
 

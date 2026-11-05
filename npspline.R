@@ -66,11 +66,11 @@ pt_rows <- lapply(THETAS, function(th) {
     theta = th,
     k     = factor(0:(K-1)),
     prob  = c(gp_pt, np_pt),
-    model = rep(c("GPCM", "NP spline"), each = K)
+    model = rep(c("GPCM", "Mean-matched\nbinomial"), each = K)
   )
 })
 pt_df <- do.call(rbind, pt_rows)
-pt_df$model <- factor(pt_df$model, levels = c("GPCM", "NP spline"))
+pt_df$model <- factor(pt_df$model, levels = c("GPCM", "Mean-matched\nbinomial"))
 pt_df$theta_lab <- factor(
   paste0("θ = ", pt_df$theta),
   levels = paste0("θ = ", THETAS)
@@ -84,9 +84,9 @@ pA <- ggplot(grid_df, aes(x = th)) +
   geom_vline(data = vlines, aes(xintercept = th),
              linetype = "dashed", colour = "grey70", linewidth = 0.5) +
   geom_line(aes(y = erfG, colour = "GPCM"),    linewidth = 1.1) +
-  geom_line(aes(y = erfN, colour = "NP spline"), linewidth = 1.0,
+  geom_line(aes(y = erfN, colour = "Mean-matched\nbinomial"), linewidth = 1.0,
             linetype = "dashed") +
-  scale_colour_manual(values = c("GPCM" = COL_GPCM, "NP spline" = COL_NP),
+  scale_colour_manual(values = c("GPCM" = COL_GPCM, "Mean-matched\nbinomial" = COL_NP),
                       name = NULL) +
   scale_x_continuous(breaks = -2:2) +
   scale_y_continuous(limits = c(0, K-1), breaks = 0:(K-1)) +
@@ -103,10 +103,10 @@ crf_long <- do.call(rbind, lapply(0:(K-1), function(k) {
     data.frame(th = theta_grid, prob = grid_df[[paste0("crfG", k)]],
                k = factor(k), model = "GPCM"),
     data.frame(th = theta_grid, prob = grid_df[[paste0("crfN", k)]],
-               k = factor(k), model = "NP spline")
+               k = factor(k), model = "Mean-matched\nbinomial")
   )
 }))
-crf_long$model <- factor(crf_long$model, levels = c("GPCM", "NP spline"))
+crf_long$model <- factor(crf_long$model, levels = c("GPCM", "Mean-matched\nbinomial"))
 
 pB <- ggplot(crf_long, aes(x = th, y = prob, colour = k)) +
   geom_vline(data = vlines, aes(xintercept = th),
@@ -114,7 +114,7 @@ pB <- ggplot(crf_long, aes(x = th, y = prob, colour = k)) +
              inherit.aes = FALSE) +
   geom_line(aes(linetype = model), linewidth = 0.9) +
   scale_colour_manual(values = CAT_COLS[seq_len(K)], name = "k") +
-  scale_linetype_manual(values = c("GPCM" = "solid", "NP spline" = "dashed"),
+  scale_linetype_manual(values = c("GPCM" = "solid", "Mean-matched\nbinomial" = "dashed"),
                         name = NULL) +
   scale_x_continuous(breaks = -2:2) +
   scale_y_continuous(limits = c(0, 1)) +
@@ -131,7 +131,7 @@ pB <- ggplot(crf_long, aes(x = th, y = prob, colour = k)) +
 pC <- ggplot(pt_df, aes(x = k, y = prob, fill = model)) +
   geom_col(position = position_dodge(width = 0.7), width = 0.65) +
   facet_wrap(~ theta_lab, ncol = 2) +
-  scale_fill_manual(values = c("GPCM" = COL_GPCM, "NP spline" = COL_NP),
+  scale_fill_manual(values = c("GPCM" = COL_GPCM, "Mean-matched\nbinomial" = COL_NP),
                     name = NULL) +
   scale_y_continuous(limits = c(0, NA), expand = expansion(mult = c(0, 0.05))) +
   labs(x = "Response category k",
@@ -146,7 +146,7 @@ pC <- ggplot(pt_df, aes(x = k, y = prob, fill = model)) +
 # ── Assemble ──────────────────────────────────────────────────────────────────
 p_final <- (pA | pB | pC) +
   plot_annotation(
-    title    = paste0("GPCM vs. NP spline  ·  K = ", K,
+    title    = paste0("GPCM vs. mean-matched binomial  ·  K = ", K,
                       ",  a = ", a, ",  s = ln8  (upper-wider thresholds)"),
     subtitle = paste0("Thresholds: ", paste(round(b, 2), collapse = ", "),
                       "   ·   Vertical lines mark θ = ",
