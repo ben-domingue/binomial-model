@@ -17,6 +17,14 @@ suppressPackageStartupMessages({
   library(parallel)
 })
 
+
+## Pin the IRW corpus to the version the paper's results were computed
+## against (results were computed 2026-05-27 to 2026-06-09, spanning IRW
+## v248-v252; v252 is the final state of that window). Forked mclapply
+## workers inherit the pin. See README "IRW version".
+IRW_VERSION <- 252
+irw::irw_use_version(version = IRW_VERSION)
+
 set.seed(20260527)
 
 N_DATASETS <- 500

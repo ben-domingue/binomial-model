@@ -4,9 +4,11 @@
 # data frame to /tmp so repeated runs (e.g. while iterating on
 # fig_empirical_illustrative.R / scratch/diag_illustrative_thresholds.R)
 # don't re-hit Redivis. Temporary convenience, not part of the
-# reproducibility pipeline -- /tmp is not durable storage.
+# reproducibility pipeline -- /tmp is not durable storage. The cache key
+# includes the pinned IRW version so different versions never collide.
 
-irw_fetch_cached <- function(tab, cache_dir = "/tmp/irw_cache") {
+irw_fetch_cached <- function(tab, cache_dir = file.path("/tmp/irw_cache",
+                               paste0("v", get0("IRW_VERSION", ifnotfound = "current")))) {
   dir.create(cache_dir, showWarnings = FALSE, recursive = TRUE)
   cache_path <- file.path(cache_dir, paste0(tab, ".rds"))
   if (file.exists(cache_path)) {

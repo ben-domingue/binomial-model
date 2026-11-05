@@ -63,6 +63,22 @@ R (tested with 4.6.1) and the CRAN packages `ggplot2`, `dplyr`, `tidyr`,
 `irw::irw_fetch()`, which requires a (free) Redivis account; everything else
 runs offline from the files in this repository.
 
+## IRW version
+
+The empirical results use **IRW v252** (released 2026-06-08). Every script
+that fetches IRW data (`irw/poly_compare_multi_compute.R`,
+`fig_threshold_stripchart.R`, `fig_empirical_illustrative.R`) pins it with
+`irw::irw_use_version(version = 252)` at the top, so reruns read the same
+data however much the IRW has grown since; `irw::irw_version(version = 252)`
+lists the exact Redivis dataset versions it comprises.
+
+One caveat on provenance: the pin was added after the fact. The original
+computation ran 2026-05-27 to 2026-06-09, during which the IRW moved from
+v248 to v252 (the main `item_response_warehouse` table stayed at v43.0;
+`item_response_warehouse_2` went from v8.1 to v8.2 and `irw_meta` from v15.1
+to v17.0). v252 is the state at the end of that window. The two §4.3
+datasets were checked and are identical at v252 and at the current release.
+
 ## Reproducing the figures
 
 Steps 1–3 are computationally expensive and only need to be rerun if
