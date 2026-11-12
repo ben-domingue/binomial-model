@@ -1,7 +1,7 @@
 suppressPackageStartupMessages({ library(dplyr) })
 
-OUT      <- "/home/ben/Dropbox/Apps/Overleaf/binomial_model"
-poly_dir <- "/home/ben/Dropbox/projects/binomial_model/src/irw/poly_compare_data"
+OUT      <- Sys.getenv("TAB_OUT", "/home/ben/Dropbox/Apps/Overleaf/binomial_model")
+poly_dir <- Sys.getenv("FIG_POLY", "/home/ben/Dropbox/projects/binomial_model/src/irw/poly_compare_data")
 
 normalise_model <- function(m) {
   m <- as.character(m)
@@ -64,7 +64,7 @@ lines <- sprintf(
 header <- c(
   "\\begin{footnotesize}",
   "\\begin{longtable}{l r r r r r r r r}",
-  "\\caption{Per-dataset results for all 436 IRW datasets used in the empirical evaluation. $K$: number of response categories; $n_i$: number of items; $N$: number of respondents. RMSE(GPCM) and RMSE(Binom 2PL): cross-validated RMSE on the rescaled response. $\\omega_c$, $\\omega_t$: pairwise IMV of GPCM over the Binom 2PL (logit), category- and threshold-level (main text Figure~\\ref{fig:pair-imv}). Gap ineq.: gap inequality, the mean log gap-ratio of the sorted fitted GPCM steps (main text Figure~\\ref{fig:asym-imv}); `--' where GPCM threshold parameters were not available or $K=3$. Datasets ordered alphabetically.} \\label{tab:si-all-datasets} \\\\",
+  "\\caption{Per-dataset results for all 434 IRW datasets used in the empirical evaluation. $K$: number of response categories; $n_i$: number of items; $N$: number of respondents. RMSE(GPCM) and RMSE(Binom 2PL): cross-validated RMSE on the rescaled response. $\\omega_c$, $\\omega_t$: pairwise IMV of GPCM over the Binom 2PL (logit), category- and threshold-level (main text Figure~\\ref{fig:pair-imv}). Gap ineq.: gap inequality, the mean log gap-ratio of the sorted fitted GPCM steps (main text Figure~\\ref{fig:asym-imv}); `--' where GPCM threshold parameters were not available or $K=3$. Datasets ordered alphabetically.} \\label{tab:si-all-datasets} \\\\",
   "\\toprule",
   "Dataset & $K$ & $n_i$ & $N$ & RMSE(GPCM) & RMSE(Binom 2PL) & $\\omega_c$ & $\\omega_t$ & Gap ineq. \\\\",
   "\\midrule",

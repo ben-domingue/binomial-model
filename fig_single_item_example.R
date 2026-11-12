@@ -18,8 +18,8 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(tidyr)
   library(mirt)
-  library(imv)
 })
+source("/home/ben/Dropbox/projects/binomial_model/src/imv_score.R")  # imv >= 0.4.0
 
 # ── Parameters (must match fig_np_crf_example.R) ─────────────────────────────
 set.seed(123)
@@ -147,7 +147,6 @@ ho_lin <- sample(N * N_ITEMS, n_ho)
 ho_mat <- matrix(FALSE, N, N_ITEMS); ho_mat[ho_lin] <- TRUE
 ho_row <- row(ho_mat)[ho_lin]; ho_col <- col(ho_mat)[ho_lin]
 X_ho   <- X_mat[ho_lin]
-pctt   <- as.numeric(table(factor(X_ho, 0:(K-1)))) / length(X_ho)
 
 pred_ho <- function(fn) {
   out <- matrix(NA_real_, n_ho, K)
@@ -160,37 +159,9 @@ pred_ho <- function(fn) {
 pr_g <- pred_ho(function(j,th) gpcm_probs(th, gpcm_params[[j]]$a, gpcm_params[[j]]$b))
 pr_b <- pred_ho(function(j,th) binom_probs(th, binom_params[[j]]$a, binom_params[[j]]$b, K))
 
-df_gb <- as.data.frame(pr_b); names(df_gb) <- paste0("p1",0:(K-1))
-df_gb$resp <- X_ho
-for (k in 0:(K-1)) df_gb[[paste0("p2",k)]] <- pr_g[,k+1L]
-
-imv_c_val <- {
-  iis <- 0:(K-1L); om <- numeric(K)
-  for (ii in iis) {
-    ns <- om.tmp <- numeric()
-    for (jj in iis[-match(ii,iis)]) {
-      y2   <- df_gb[df_gb$resp %in% c(ii,jj),]
-      resp <- ifelse(y2$resp==ii,1,0)
-      p1   <- y2[[paste0("p1",ii)]]/(y2[[paste0("p1",ii)]]+y2[[paste0("p1",jj)]])
-      p2   <- y2[[paste0("p2",ii)]]/(y2[[paste0("p2",ii)]]+y2[[paste0("p2",jj)]])
-      om.tmp[as.character(jj)] <- imv.binary(resp,p1,p2)
-      ns[as.character(jj)]     <- nrow(y2)
-    }
-    om[ii+1L] <- sum(om.tmp*ns)/sum(ns)
-  }
-  sum(om*pctt)/sum(pctt)
-}
-imv_t_val <- {
-  om <- numeric(K-1L)
-  for (ii in 0:(K-2L)) {
-    resp <- ifelse(df_gb$resp<=ii,1,0)
-    p1   <- rowSums(df_gb[,paste0("p1",0:ii),drop=FALSE])
-    p2   <- rowSums(df_gb[,paste0("p2",0:ii),drop=FALSE])
-    om[ii+1L] <- imv.binary(resp,p1,p2)
-  }
-  wts <- pctt[1:(K-1L)]/(1-pctt[K])
-  sum(om*wts)/sum(wts)
-}
+# GPCM over Binom 1PL, by item via the imv package (imv_score.R)
+v <- imv_by_item(X_ho, ho_col, pr_b, pr_g, K)
+imv_c_val <- v[["imv_c"]]; imv_t_val <- v[["imv_t"]]
 cat(sprintf("IMV (GPCM vs 1PL, all items):  omega_c = %.3f  omega_t = %.3f\n",
             imv_c_val, imv_t_val))
 
@@ -219,5 +190,5 @@ p <- ggplot(plot_df,
         panel.spacing    = unit(0.5, "lines"),
         plot.subtitle    = element_text(size=8, hjust=0.5, colour="grey30"))
 
-ggsave("/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs/fig_single_item_example.pdf", p, width=6.5, height=4.5)
+ggsave(file.path(Sys.getenv("FIG_OUT", "/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs"), "fig_single_item_example.pdf"), p, width=6.5, height=4.5)
 message("Saved fig_single_item_example.pdf")

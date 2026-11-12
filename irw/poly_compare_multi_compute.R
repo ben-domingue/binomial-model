@@ -10,12 +10,13 @@
 
 suppressPackageStartupMessages({
   library(irw)
-  library(imv)
   library(mirt)
   library(scam)
   library(dplyr)
   library(parallel)
 })
+source("imv_score.R")      # imv package >= 0.4.0; all IMVs go through imv_by_item()
+source("irw_fetch_cached.R")
 
 
 ## Pin the IRW corpus to the version the paper's results were computed
@@ -31,8 +32,14 @@ N_DATASETS <- 500
 MIN_N      <- 200
 MIN_ITEMS  <- 3
 MAX_ITEMS  <- 60L
-N_CORES    <- 4L
-out_dir    <- "vignettes/poly_compare_data"
+N_CORES    <- as.integer(Sys.getenv("N_CORES", "4"))
+# 2026-11-11 rerun with imv 0.4.0: new output folder; the June results stay in
+# poly_compare_data/ for comparison. Held-out predictions go to pred_dir.
+out_dir    <- Sys.getenv("EMP_OUT_DIR", "irw/poly_compare_data_imv040")
+pred_dir   <- file.path(out_dir, "preds")
+old_dir    <- "irw/poly_compare_data"
+IRW_CACHE  <- Sys.getenv("IRW_CACHE", path.expand(file.path("~/.cache/irw", paste0("v", IRW_VERSION))))
+dir.create(pred_dir, recursive = TRUE, showWarnings = FALSE)
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 message("Using ", N_CORES, " cores")
@@ -65,47 +72,8 @@ custom_items <- list(
   binom_1pl_cll = binom_1pl_cll
 )
 
-# ── 2. imv_c and imv_t (from intermodelvigorish/shinysite collapse.qmd) ───────
-# imv.binary is imported from the imv package.
-# y must have: $resp (integer 0..K-1), columns p1{k} and p2{k} for each k.
-# pctt.tab: category proportions (length K), used as weights.
-
-imv_c <- function(y, pctt.tab, p1, p2) {
-  nn  <- length(pctt.tab)
-  om  <- numeric(nn)
-  iis <- 0:(nn - 1)
-  for (ii in iis) {
-    ns <- om.tmp <- numeric()
-    jjs <- iis[-match(ii, iis)]
-    for (jj in jjs) {
-      y2   <- y[y$resp %in% c(ii, jj), ]
-      resp <- ifelse(y2$resp == ii, 1, 0)
-      p1.ii <- y2[[paste0(p1, ii)]]; p1.jj <- y2[[paste0(p1, jj)]]
-      p2.ii <- y2[[paste0(p2, ii)]]; p2.jj <- y2[[paste0(p2, jj)]]
-      z <- data.frame(resp = resp,
-                      p1   = p1.ii / (p1.ii + p1.jj),
-                      p2   = p2.ii / (p2.ii + p2.jj))
-      om.tmp[as.character(jj)] <- imv.binary(z$resp, z$p1, z$p2)
-      ns[as.character(jj)]     <- nrow(z)
-    }
-    om[ii + 1] <- sum(om.tmp * ns) / sum(ns)
-  }
-  sum(om * pctt.tab) / sum(pctt.tab)
-}
-
-imv_t <- function(y, pctt.tab, p1, p2) {
-  nn <- length(pctt.tab)
-  om <- numeric(nn - 1)
-  for (ii in 0:(nn - 2)) {
-    resp <- ifelse(y$resp <= ii, 1, 0)
-    pr1  <- rowSums(y[, paste0(p1, 0:ii), drop = FALSE])
-    pr2  <- rowSums(y[, paste0(p2, 0:ii), drop = FALSE])
-    z    <- data.frame(resp = resp, p1 = pr1, p2 = pr2)
-    om[ii + 1] <- imv.binary(z$resp, z$p1, z$p2)
-  }
-  wts <- pctt.tab[1:(nn - 1)] / (1 - pctt.tab[nn])
-  sum(om * wts) / sum(wts)
-}
+# imv_c / imv_t removed 2026-11-11: IMVs come from the imv package via
+# imv_by_item() in imv_score.R (by item, response-weighted).
 
 # ── 2. Process one dataset (fetch → preprocess → fit → write) ─────────────────
 process_one <- function(tab) {
@@ -122,13 +90,16 @@ process_one <- function(tab) {
   }
 
   message("\n=== ", tab, " ===")
+  # Per-dataset seed so the item/person subsamples and the holdout split do not
+  # depend on which worker runs the job or in what order.
+  set.seed(sum(utf8ToInt(tab) * seq_along(utf8ToInt(tab))) %% .Machine$integer.max)
 
   rate_limit_patterns <- c("too_many_requests", "rate_limit", "quota_exceeded",
                             "429", "too many", "rate limit", "quota")
   df <- NULL
   for (attempt in 1:3) {
     fetch_err <- NULL
-    df <- tryCatch(irw_fetch(tab), error = function(e) {
+    df <- tryCatch(irw_fetch_cached(tab, cache_dir = IRW_CACHE), error = function(e) {
       fetch_err <<- e$message
       msg <- e$message
       if (any(sapply(rate_limit_patterns, grepl, x = msg, ignore.case = TRUE))) {
@@ -190,6 +161,12 @@ process_one <- function(tab) {
     N        <- 5000L
   }
 
+  # Recode each item to 0..K-1. Items need not share the dataset minimum (e.g.
+  # one item coded 1..5 among items coded 0..4). mirt recodes each item this way
+  # internally, so held-out responses must be coded the same way to line up with
+  # its probtrace columns. Before 2026-11-11 they were not; 10 datasets affected.
+  resp_mat[] <- apply(resp_mat, 2, function(x) match(x, sort(unique(na.omit(x)))) - 1L)
+
   message("  N=", N, "  items=", ni, "  K=", K)
 
   # Response-level 80/20 holdout: mask 20% of observed cells.
@@ -219,34 +196,23 @@ process_one <- function(tab) {
   }
   compute_rmse <- function(pred) sqrt(mean((pred - obs_vals / (K - 1L))^2, na.rm = TRUE))
 
-  # Training category proportions used as the prevalence baseline for IMV
-  train_obs <- as.integer(train_mat[!is.na(train_mat)])
-  pctt.tab  <- as.numeric(table(factor(train_obs, levels = 0L:(K - 1L)))) / length(train_obs)
+  # Prevalence baseline: each item's category proportions among its training
+  # responses (imv::imv() baseline = "item").
+  test_item <- test_cells[, 2]
+  train_idx <- which(!is.na(train_mat), arr.ind = TRUE)
+  P_prev    <- prevalence_matrix(test_item, as.integer(train_mat[train_idx]),
+                                 train_idx[, 2], K)
 
-  compute_imv <- function(probs) {
-    y_imv      <- as.data.frame(probs)
-    colnames(y_imv) <- paste0("p2", 0L:(K - 1L))
-    y_imv$resp <- obs_vals
-    for (k in 0L:(K - 1L)) y_imv[[paste0("p1", k)]] <- pctt.tab[k + 1L]
-    y_imv <- y_imv[complete.cases(y_imv), ]
-    list(
-      imv_c = tryCatch(imv_c(y_imv, pctt.tab, p1 = "p1", p2 = "p2"), error = function(e) NA_real_),
-      imv_t = tryCatch(imv_t(y_imv, pctt.tab, p1 = "p1", p2 = "p2"), error = function(e) NA_real_)
-    )
-  }
-
-  # Pairwise: how much does probs_enh improve over probs_base?
+  # IMV of probs_enh over probs_base on the held-out cells, by item.
   compute_imv_pair <- function(probs_base, probs_enh) {
-    y_imv <- as.data.frame(probs_base)
-    colnames(y_imv) <- paste0("p1", 0L:(K - 1L))
-    y_imv$resp <- obs_vals
-    for (k in 0L:(K - 1L)) y_imv[[paste0("p2", k)]] <- probs_enh[, k + 1L]
-    y_imv <- y_imv[complete.cases(y_imv), ]
-    list(
-      imv_c = tryCatch(imv_c(y_imv, pctt.tab, p1 = "p1", p2 = "p2"), error = function(e) NA_real_),
-      imv_t = tryCatch(imv_t(y_imv, pctt.tab, p1 = "p1", p2 = "p2"), error = function(e) NA_real_)
-    )
+    ok <- complete.cases(probs_base, probs_enh)
+    v  <- tryCatch(imv_by_item(obs_vals[ok], test_item[ok], probs_base[ok, , drop = FALSE],
+                               probs_enh[ok, , drop = FALSE], K), error = function(e) NULL)
+    if (is.null(v)) return(list(imv_c = NA_real_, imv_t = NA_real_, floor_c = NA, floor_t = NA))
+    list(imv_c = v[["imv_c"]], imv_t = v[["imv_t"]],
+         floor_c = attr(v, "floor_c"), floor_t = attr(v, "floor_t"))
   }
+  compute_imv <- function(probs) compute_imv_pair(P_prev, probs)
 
   fit_eval <- function(label, itemtypes, custom = NULL, pars = NULL, extract_bpars = FALSE) {
     message("    ", label, " ...")
@@ -352,7 +318,7 @@ process_one <- function(tab) {
   }))
 
   safe_pair <- function(r_base, r_enh) {
-    if (is.null(r_base) || is.null(r_enh)) return(list(imv_c = NA_real_, imv_t = NA_real_))
+    if (is.null(r_base) || is.null(r_enh)) return(list(imv_c = NA_real_, imv_t = NA_real_, floor_c = NA, floor_t = NA))
     compute_imv_pair(r_base$probs, r_enh$probs)
   }
   p1 <- safe_pair(res$binom_1pl, res$pcm)
@@ -362,6 +328,8 @@ process_one <- function(tab) {
     comparison = c("Binom 1PL (logit)→PCM", "Binom 2PL (logit)→GPCM"),
     imv_c      = round(c(p1$imv_c, p2$imv_c), 4),
     imv_t      = round(c(p1$imv_t, p2$imv_t), 4),
+    floor_c    = c(p1$floor_c, p2$floor_c),   # items with a task floored at a fair coin
+    floor_t    = c(p1$floor_t, p2$floor_t),
     stringsAsFactors = FALSE
   )
 
@@ -426,43 +394,30 @@ process_one <- function(tab) {
               rmse = rmse_df, imv = imv_df,
               pair_imv = pair_imv_df, imv_1pl = imv_1pl_df,
               asym = asym_df, cat_decomp = cat_decomp_df)
+  # Held-out predictions, so later changes to IMV scoring need no refit.
+  saveRDS(list(tab = tab, K = K, x = as.integer(obs_vals), person = test_cells[, 1],
+               item = colnames(resp_mat)[test_item], P_prev = P_prev,
+               probs = Filter(Negate(is.null), lapply(res, function(r) r$probs))),
+          file.path(pred_dir, paste0("pred_", tab, ".rds")))
   saveRDS(out, cache)
   out
 }
 
-# ── 3. Build candidate list ───────────────────────────────────────────────────
-all_cached_names <- function() {
-  fs <- list.files(out_dir, pattern = "^multi_.+\\.rds$", full.names = FALSE)
-  fs <- fs[!grepl("^multi_(results|summary)\\.rds$", fs)]
-  sub("^multi_", "", sub("\\.rds$", "", fs))
-}
-
-# Separate truly-complete caches (have imv_1pl) from ones that need updating.
-all_cached   <- all_cached_names()
-truly_done   <- Filter(function(nm) {
-  x <- tryCatch(readRDS(file.path(out_dir, paste0("multi_", nm, ".rds"))),
-                error = function(e) NULL)
-  !is.null(x[["imv_1pl"]]) && !is.null(x[["asym"]]) && !is.null(x[["cat_decomp"]])
-}, all_cached)
-needs_update <- setdiff(all_cached, truly_done)
-
-# New datasets to fill up to N_DATASETS beyond those already cached.
-new_candidates <- setdiff(irw_filter(n_categories = c(3, 7)), all_cached)
-new_candidates <- sample(new_candidates)
-n_new          <- max(0L, N_DATASETS - length(all_cached))
-new_candidates <- head(new_candidates, n_new)
-
-candidates <- c(needs_update, new_candidates)
-
-message(length(truly_done), " datasets complete; ",
-        length(needs_update), " need imv_1pl update; adding up to ",
-        length(new_candidates), " new candidates — ",
-        length(candidates), " total jobs on ", N_CORES, " cores")
+# ── 3. Dataset list ───────────────────────────────────────────────────────────
+# The paper's 436 datasets: exactly those in the June results (old_dir). The
+# June script instead drew new IRW datasets at random to fill up to N_DATASETS.
+paper_tabs <- sub("^multi_", "", sub("\\.rds$", "",
+                  list.files(old_dir, pattern = "^multi_.+\\.rds$")))
+paper_tabs <- paper_tabs[!paper_tabs %in% c("results", "summary")]
+if (nzchar(Sys.getenv("EMP_TABS"))) paper_tabs <- strsplit(Sys.getenv("EMP_TABS"), ",")[[1]]
+done       <- sub("^multi_", "", sub("\\.rds$", "", list.files(out_dir, pattern = "^multi_.+\\.rds$")))
+candidates <- setdiff(paper_tabs, done)
+message(length(paper_tabs), " datasets; ", length(done), " already done; ",
+        length(candidates), " jobs on ", N_CORES, " cores")
 
 # ── 4. Parallel run ───────────────────────────────────────────────────────────
 mclapply(candidates, process_one,
          mc.cores       = N_CORES,
          mc.preschedule = FALSE)
 
-message("\nDone. ", length(all_cached_names()), " datasets cached.")
-message("Run poly_compare_multi_combine.R to assemble multi_results.rds.")
+message("\nDone. ", length(list.files(out_dir, pattern = "^multi_")), " datasets in ", out_dir)

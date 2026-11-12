@@ -12,7 +12,7 @@
 #
 # Usage: Rscript sims/gpcm_binomial_sweep_np.R
 
-suppressPackageStartupMessages(library(imv))
+source("imv_score.R")   # imv package >= 0.4.0; all IMVs go through imv_by_item()
 suppressPackageStartupMessages(library(mirt))
 suppressPackageStartupMessages(library(parallel))
 suppressPackageStartupMessages(library(scam))
@@ -22,11 +22,13 @@ set.seed(2027)
 N_PERSONS       <- 1000L
 N_ITEMS         <- 10L
 N_REPS          <- 100L
-N_CORES         <- 4L
+N_CORES         <- as.integer(Sys.getenv("N_CORES", "4"))
 LNORM_SDLOG     <- 0.5
 K_grid          <- c(5L, 7L)
 THRESH_NOISE_SD <- 0.3
-out_file        <- "sims/gpcm_binomial_results_np_oracle.rds"
+OUT_DIR <- Sys.getenv("SIM_OUT_DIR", "sim/results_imv040")
+dir.create(OUT_DIR, showWarnings = FALSE, recursive = TRUE)
+out_file <- file.path(OUT_DIR, "gpcm_binomial_results_np_oracle.rds")
 
 # ── Standard model helpers (shared with gpcm_binomial_sweep.R) ─────────────────
 
@@ -155,45 +157,8 @@ predict_model <- function(nm, f, theta_te, K) {
   )
 }
 
-imv_c <- function(y, pctt.tab, p1, p2) {
-  nn  <- length(pctt.tab); iis <- 0:(nn - 1L); om <- numeric(nn)
-  for (ii in iis) {
-    ns <- om.tmp <- numeric()
-    for (jj in iis[-match(ii, iis)]) {
-      y2   <- y[y$resp %in% c(ii, jj), ]
-      resp <- ifelse(y2$resp == ii, 1, 0)
-      p1ii <- y2[[paste0(p1, ii)]]; p1jj <- y2[[paste0(p1, jj)]]
-      p2ii <- y2[[paste0(p2, ii)]]; p2jj <- y2[[paste0(p2, jj)]]
-      z    <- data.frame(resp = resp,
-                         p1   = p1ii / (p1ii + p1jj),
-                         p2   = p2ii / (p2ii + p2jj))
-      om.tmp[as.character(jj)] <- imv.binary(z$resp, z$p1, z$p2)
-      ns[as.character(jj)]     <- nrow(z)
-    }
-    om[ii + 1L] <- sum(om.tmp * ns) / sum(ns)
-  }
-  sum(om * pctt.tab) / sum(pctt.tab)
-}
-
-imv_t <- function(y, pctt.tab, p1, p2) {
-  nn <- length(pctt.tab); om <- numeric(nn - 1L)
-  for (ii in 0:(nn - 2L)) {
-    resp <- ifelse(y$resp <= ii, 1, 0)
-    pr1  <- rowSums(y[, paste0(p1, 0:ii), drop = FALSE])
-    pr2  <- rowSums(y[, paste0(p2, 0:ii), drop = FALSE])
-    om[ii + 1L] <- imv.binary(resp, pr1, pr2)
-  }
-  wts <- pctt.tab[1:(nn - 1L)] / (1 - pctt.tab[nn])
-  sum(om * wts) / sum(wts)
-}
-
-make_pair_df <- function(probs_base, probs_enh, X, K) {
-  df         <- as.data.frame(probs_base); colnames(df) <- paste0("p1", 0:(K - 1L))
-  df$resp    <- X
-  enh        <- as.data.frame(probs_enh)
-  for (k in 0:(K - 1L)) df[[paste0("p2", k)]] <- enh[, k + 1L]
-  df[complete.cases(df), ]
-}
+# imv_c / imv_t / make_pair_df removed 2026-11-11: IMVs now come from the imv
+# package via imv_by_item() in imv_score.R (by item, response-weighted).
 
 rmse_fn <- function(probs, X, K) {
   exp_score <- as.numeric(probs %*% 0:(K - 1L)) / (K - 1L)
@@ -292,8 +257,6 @@ run_one_np <- function(K, flex, rep_idx) {
   ho_row   <- row(ho_mat)[ho_lin]
   ho_col   <- col(ho_mat)[ho_lin]
   all_X_ho <- X_mat[ho_lin]
-  pctt.tab <- as.numeric(table(factor(all_X_ho, levels = 0L:(K - 1L)))) /
-              length(all_X_ho)
 
   X_tr_df    <- as.data.frame(X_mat)
   X_tr_df[ho_mat] <- NA_integer_
@@ -401,33 +364,36 @@ run_one_np <- function(K, flex, rep_idx) {
   # Phase 5: metrics ----------------------------------------------------------
   pr_1pl  <- stacked[["binom_1pl_logit"]]
   pr_gpcm <- stacked[["gpcm"]]
+  # IMV of P1 over P0 on the held-out cells, by item (see imv_score.R)
+  score <- function(P0, P1) {
+    v <- tryCatch(imv_by_item(all_X_ho, ho_col, P0, P1, K), error = function(e) NULL)
+    if (is.null(v)) return(c(NA_real_, NA_real_, NA_real_, NA_real_))
+    c(v[["imv_c"]], v[["imv_t"]], attr(v, "floor_c"), attr(v, "floor_t"))
+  }
   rows <- lapply(model_names, function(nm) {
     pr <- stacked[[nm]]
     if (is.null(pr) || nrow(pr) == 0L || anyNA(pr)) return(NULL)
 
     if (nm == "gpcm" || is.null(pr_gpcm) || nrow(pr_gpcm) == 0L) {
-      imv_c_gpcm <- 0; imv_t_gpcm <- 0
+      imv_c_gpcm <- 0; imv_t_gpcm <- 0; floor_c_gpcm <- floor_t_gpcm <- NA_real_
     } else {
-      ydf <- make_pair_df(pr, pr_gpcm, all_X_ho, K)
-      imv_c_gpcm <- tryCatch(imv_c(ydf, pctt.tab, "p1", "p2"), error = function(e) NA_real_)
-      imv_t_gpcm <- tryCatch(imv_t(ydf, pctt.tab, "p1", "p2"), error = function(e) NA_real_)
+      v <- score(pr, pr_gpcm)
+      imv_c_gpcm <- v[1]; imv_t_gpcm <- v[2]; floor_c_gpcm <- v[3]; floor_t_gpcm <- v[4]
     }
 
     if (nm == "binom_1pl_logit" || is.null(pr_1pl) ||
         nrow(pr_1pl) == 0L || anyNA(pr_1pl)) {
-      imv_c_1pl <- 0; imv_t_1pl <- 0
+      imv_c_1pl <- 0; imv_t_1pl <- 0; floor_c_1pl <- floor_t_1pl <- NA_real_
     } else {
-      ydf_1pl <- make_pair_df(pr_1pl, pr, all_X_ho, K)
-      imv_c_1pl <- tryCatch(imv_c(ydf_1pl, pctt.tab, "p1", "p2"), error = function(e) NA_real_)
-      imv_t_1pl <- tryCatch(imv_t(ydf_1pl, pctt.tab, "p1", "p2"), error = function(e) NA_real_)
+      v <- score(pr_1pl, pr)
+      imv_c_1pl <- v[1]; imv_t_1pl <- v[2]; floor_c_1pl <- v[3]; floor_t_1pl <- v[4]
     }
 
     if (is.null(pr_oracle) || anyNA(pr_oracle)) {
-      imv_c_oracle <- NA_real_; imv_t_oracle <- NA_real_
+      imv_c_oracle <- NA_real_; imv_t_oracle <- NA_real_; floor_c_oracle <- floor_t_oracle <- NA_real_
     } else {
-      ydf_oracle   <- make_pair_df(pr, pr_oracle, all_X_ho, K)
-      imv_c_oracle <- tryCatch(imv_c(ydf_oracle, pctt.tab, "p1", "p2"), error = function(e) NA_real_)
-      imv_t_oracle <- tryCatch(imv_t(ydf_oracle, pctt.tab, "p1", "p2"), error = function(e) NA_real_)
+      v <- score(pr, pr_oracle)
+      imv_c_oracle <- v[1]; imv_t_oracle <- v[2]; floor_c_oracle <- v[3]; floor_t_oracle <- v[4]
     }
 
     data.frame(
@@ -436,6 +402,9 @@ run_one_np <- function(K, flex, rep_idx) {
       imv_c        = imv_c_gpcm,    imv_t        = imv_t_gpcm,
       imv_c_1pl    = imv_c_1pl,     imv_t_1pl    = imv_t_1pl,
       imv_c_oracle = imv_c_oracle,  imv_t_oracle = imv_t_oracle,
+      floor_c = floor_c_gpcm, floor_t = floor_t_gpcm,
+      floor_c_1pl = floor_c_1pl, floor_t_1pl = floor_t_1pl,
+      floor_c_oracle = floor_c_oracle, floor_t_oracle = floor_t_oracle,
       stringsAsFactors = FALSE
     )
   })
@@ -462,6 +431,9 @@ results_np_list <- mclapply(seq_len(nrow(jobs_np)), function(i) {
 results_np <- do.call(rbind, Filter(Negate(is.null), results_np_list))
 results_np$model <- factor(results_np$model, levels = model_names)
 saveRDS(results_np, out_file)
+# make_figures.R also reads the same runs without the oracle columns
+saveRDS(results_np[, !grepl("oracle", names(results_np))],
+        file.path(OUT_DIR, "gpcm_binomial_results_np.rds"))
 message(sprintf("Saved %d NP rows → %s", nrow(results_np), out_file))
 
 # ── Quick summary ──────────────────────────────────────────────────────────────
