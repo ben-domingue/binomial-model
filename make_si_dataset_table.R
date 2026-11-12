@@ -6,7 +6,7 @@ poly_dir <- Sys.getenv("FIG_POLY", "/home/ben/Dropbox/projects/binomial_model/sr
 normalise_model <- function(m) {
   m <- as.character(m)
   m[m == "1PL+logit"]   <- "Binom 1PL (logit)"
-  m[m == "2PL+logit"]   <- "Binom 2PL (logit)"
+  m[m == "2PL+logit"]   <- "Binom 2PL"
   m[m == "1PL+cloglog"] <- "Binom 1PL (cloglog)"
   m
 }
@@ -28,15 +28,15 @@ meta <- do.call(rbind, lapply(names(results), function(nm) {
 all_rmse <- do.call(rbind, lapply(results, `[[`, "rmse")) |>
   mutate(model = normalise_model(model))
 rmse_wide <- all_rmse |>
-  filter(model %in% c("GPCM","Binom 2PL (logit)")) |>
+  filter(model %in% c("GPCM","Binom 2PL")) |>
   mutate(model = ifelse(model=="GPCM","rmse_gpcm","rmse_binom2pl")) |>
   tidyr::pivot_wider(id_cols=dataset, names_from=model, values_from=rmse)
 
 all_pair <- do.call(rbind, Filter(Negate(is.null), lapply(results, `[[`, "pair_imv"))) |>
   mutate(comparison = sub("1PL\\+logit", "Binom 1PL (logit)",
-                     sub("2PL\\+logit", "Binom 2PL (logit)", comparison)))
+                     sub("2PL\\+logit", "Binom 2PL", comparison)))
 pair_gpcm <- all_pair |>
-  filter(comparison == "Binom 2PL (logit)→GPCM") |>
+  filter(comparison == "Binom 2PL→GPCM") |>
   select(dataset, imv_c, imv_t)
 
 all_asym <- do.call(rbind, Filter(Negate(is.null), lapply(results, `[[`, "asym")))
@@ -64,7 +64,7 @@ lines <- sprintf(
 header <- c(
   "\\begin{footnotesize}",
   "\\begin{longtable}{l r r r r r r r r}",
-  "\\caption{Per-dataset results for all 434 IRW datasets used in the empirical evaluation. $K$: number of response categories; $n_i$: number of items; $N$: number of respondents. RMSE(GPCM) and RMSE(Binom 2PL): cross-validated RMSE on the rescaled response. $\\omega_c$, $\\omega_t$: pairwise IMV of GPCM over the Binom 2PL (logit), category- and threshold-level (main text Figure~\\ref{fig:pair-imv}). Gap ineq.: gap inequality, the mean log gap-ratio of the sorted fitted GPCM steps (main text Figure~\\ref{fig:asym-imv}); `--' where GPCM threshold parameters were not available or $K=3$. Datasets ordered alphabetically.} \\label{tab:si-all-datasets} \\\\",
+  "\\caption{Per-dataset results for all 434 IRW datasets used in the empirical evaluation. $K$: number of response categories; $n_i$: number of items; $N$: number of respondents. RMSE(GPCM) and RMSE(Binom 2PL): cross-validated RMSE on the rescaled response. $\\omega_c$, $\\omega_t$: pairwise IMV of GPCM over the Binom 2PL, category- and threshold-level (main text Figure~\\ref{fig:pair-imv}). Gap ineq.: gap inequality, the mean log gap-ratio of the sorted fitted GPCM steps (main text Figure~\\ref{fig:asym-imv}); `--' where GPCM threshold parameters were not available or $K=3$. Datasets ordered alphabetically.} \\label{tab:si-all-datasets} \\\\",
   "\\toprule",
   "Dataset & $K$ & $n_i$ & $N$ & RMSE(GPCM) & RMSE(Binom 2PL) & $\\omega_c$ & $\\omega_t$ & Gap ineq. \\\\",
   "\\midrule",

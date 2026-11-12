@@ -58,29 +58,36 @@ make_thresholds <- function(K, asym = 0) {
 model_labels <- c(
   gpcm              = "GPCM",       pcm               = "PCM",
   grm               = "GRM",        tutz              = "Tutz",
-  binom_2pl_logit   = "Binom 2PL (logit)",
-  binom_1pl_logit   = "Binom 1PL (logit)",
-  binom_1pl_scobit  = "Binom 1PL (scobit)",
-  binom_1pl_cloglog = "Binom 1PL (cloglog)",
-  binom_1pl_cauchit = "Binom 1PL (cauchit)",
+  binom_2pl_logit   = "Binom 2PL",
+  binom_1pl_logit   = "Binom 1PL",
+  binom_1pl_scobit  = "Binom scobit",
+  binom_1pl_cloglog = "Binom cloglog",
+  binom_1pl_cauchit = "Binom cauchit",
   np_spline         = "NP spline"
 )
 model_colors <- c(
   "GPCM"               = "#1b7837", "PCM"                = "#762a83",
   "GRM"                = "#2166ac", "Tutz"               = "#543005",
-  "Binom 2PL (logit)"  = "#d6604d", "Binom 1PL (logit)"  = "#f4a582",
-  "Binom 1PL (scobit)" = "#f1a340", "Binom 1PL (cloglog)"= "#c2a5cf",
-  "Binom 1PL (cauchit)"= "#a6dba0", "NP spline"          = "#e7298a"
+  "Binom 2PL"  = "#d6604d", "Binom 1PL"  = "#f4a582",
+  "Binom scobit" = "#f1a340", "Binom cloglog"= "#c2a5cf",
+  "Binom cauchit"= "#a6dba0", "NP spline"          = "#e7298a"
 )
 
 ## normalise old empirical model names (pre-June-2026 compute runs)
+## Model display names (renamed 2026-11-12: "PL" kept only for logistic links).
+## Maps the names stored in results files (old compute runs and current ones).
 normalise_model <- function(m) {
   m <- as.character(m)
-  m[m == "1PL+logit"]   <- "Binom 1PL (logit)"
-  m[m == "2PL+logit"]   <- "Binom 2PL (logit)"
-  m[m == "1PL+cloglog"] <- "Binom 1PL (cloglog)"
+  map <- c("1PL+logit" = "Binom 1PL", "2PL+logit" = "Binom 2PL", "1PL+cloglog" = "Binom cloglog",
+           "Binom 1PL (logit)" = "Binom 1PL", "Binom 2PL (logit)" = "Binom 2PL",
+           "Binom 1PL (cloglog)" = "Binom cloglog", "Binom 1PL (scobit)" = "Binom scobit",
+           "Binom 1PL (cauchit)" = "Binom cauchit")
+  hit <- m %in% names(map); m[hit] <- map[m[hit]]
   m
 }
+normalise_comparison <- function(x)
+  sub("Binom 1PL \\(logit\\)|1PL\\+logit", "Binom 1PL",
+      sub("Binom 2PL \\(logit\\)|2PL\\+logit", "Binom 2PL", x))
 
 theme_set(
   theme_bw(base_size = 11) +
@@ -171,13 +178,13 @@ p2      <- optim(c(a_ex, 0),
 binom_es <- es_fn(binom_pr_fn(theta_g, p2[1], p2[2], K_ex, "logit"), K_ex)
 erf_df <- rbind(
   data.frame(theta = theta_g, es = gpcm_es,  model = "GPCM"),
-  data.frame(theta = theta_g, es = binom_es, model = "Binom 2PL (logit)")
+  data.frame(theta = theta_g, es = binom_es, model = "Binom 2PL")
 )
-erf_df$model <- factor(erf_df$model, levels = c("GPCM", "Binom 2PL (logit)"))
+erf_df$model <- factor(erf_df$model, levels = c("GPCM", "Binom 2PL"))
 p <- ggplot(erf_df, aes(x = theta, y = es, colour = model, linetype = model)) +
   geom_line(linewidth = 1.0) +
-  scale_colour_manual(values = c("GPCM" = "black", "Binom 2PL (logit)" = "#d6604d"), name = NULL) +
-  scale_linetype_manual(values = c("GPCM" = "solid", "Binom 2PL (logit)" = "dashed"), name = NULL) +
+  scale_colour_manual(values = c("GPCM" = "black", "Binom 2PL" = "#d6604d"), name = NULL) +
+  scale_linetype_manual(values = c("GPCM" = "solid", "Binom 2PL" = "dashed"), name = NULL) +
   scale_x_continuous(name = expression(theta), breaks = -2:2) +
   scale_y_continuous(name = expression(E*"["*X*"|"*theta*"]"), limits = c(0, K_ex - 1L)) +
   theme_bw(base_size = 11) + theme(legend.position = "bottom", panel.grid.minor = element_blank())
@@ -185,8 +192,8 @@ save_pdf(p, "fig_erf_overview", w = 4.5, h = 3.5)
 
 ## ── fig_erf_grid (3 conditions × 8 models) ───────────────────────────────
 message("fig_erf_grid")
-panel_levels <- c("PCM","GRM","NP spline","Binom 2PL (logit)","Binom 1PL (logit)",
-                  "Binom 1PL (scobit)","Binom 1PL (cloglog)","Binom 1PL (cauchit)")
+panel_levels <- c("PCM","GRM","NP spline","Binom 2PL","Binom 1PL",
+                  "Binom scobit","Binom cloglog","Binom cauchit")
 panel_color  <- "#e6550d"
 panel_colors <- setNames(c(rep(panel_color,2),"#e7298a",rep(panel_color,5)), panel_levels)
 
@@ -211,11 +218,11 @@ make_erf_panel <- function(s_val, label) {
     data.frame(panel="PCM",                 theta=theta_g,es=es_fn(gpcm_pr_fn(theta_g,1.0,sort(pcm_b)),K_ex)),
     data.frame(panel="GRM",                 theta=theta_g,es=es_fn(grm_pr_fn(theta_g,grm_p[1],sort(grm_p[-1])),K_ex)),
     data.frame(panel="NP spline",           theta=theta_g,es=es_np),
-    data.frame(panel="Binom 2PL (logit)",   theta=theta_g,es=es_fn(binom_pr_fn(theta_g,p2l[1],p2l[2],K_ex,"logit"),K_ex)),
-    data.frame(panel="Binom 1PL (logit)",   theta=theta_g,es=es_fn(binom_pr_fn(theta_g,1,opt1("logit"),K_ex,"logit"),K_ex)),
-    data.frame(panel="Binom 1PL (scobit)",  theta=theta_g,es=sco_es(sc_p[1],sc_p[2])),
-    data.frame(panel="Binom 1PL (cloglog)", theta=theta_g,es=es_fn(binom_pr_fn(theta_g,1,opt1("cloglog"),K_ex,"cloglog"),K_ex)),
-    data.frame(panel="Binom 1PL (cauchit)", theta=theta_g,es=es_fn(binom_pr_fn(theta_g,1,opt1("cauchit"),K_ex,"cauchit"),K_ex))
+    data.frame(panel="Binom 2PL",   theta=theta_g,es=es_fn(binom_pr_fn(theta_g,p2l[1],p2l[2],K_ex,"logit"),K_ex)),
+    data.frame(panel="Binom 1PL",   theta=theta_g,es=es_fn(binom_pr_fn(theta_g,1,opt1("logit"),K_ex,"logit"),K_ex)),
+    data.frame(panel="Binom scobit",  theta=theta_g,es=sco_es(sc_p[1],sc_p[2])),
+    data.frame(panel="Binom cloglog", theta=theta_g,es=es_fn(binom_pr_fn(theta_g,1,opt1("cloglog"),K_ex,"cloglog"),K_ex)),
+    data.frame(panel="Binom cauchit", theta=theta_g,es=es_fn(binom_pr_fn(theta_g,1,opt1("cauchit"),K_ex,"cauchit"),K_ex))
   )
   m_df$panel <- factor(m_df$panel, levels=panel_levels)
   ref_df <- do.call(rbind, lapply(panel_levels, function(m)
@@ -246,9 +253,9 @@ save_pdf(p, "fig_imv_gpcm", w=8, h=4.5)
 
 ## ── fig_imv_floor ─────────────────────────────────────────────────────────
 message("fig_imv_floor")
-res_1pl <- filter(res, model_label != "Binom 1PL (logit)")
+res_1pl <- filter(res, model_label != "Binom 1PL")
 p <- make_imv_pair(res_1pl, "imv_c_1pl", "imv_t_1pl", "ω_c (category)", "ω_t (threshold)",
-                   "IMV(Binom 1PL (logit), model)  [positive = model wins]", excl=NULL)
+                   "IMV(Binom 1PL, model)  [positive = model wins]", excl=NULL)
 save_pdf(p, "fig_imv_floor", w=8, h=4.5)
 
 ## ── fig_rmse_sim ──────────────────────────────────────────────────────────
@@ -488,7 +495,7 @@ s2t <- res_np |> filter(flex>0.67) |> group_by(model_label) |>
   summarise(imv=mean(imv_t_1pl,na.rm=TRUE),.groups="drop") |>
   mutate(section="Section 2\n(NP DGP, flex>0.67)", metric="ω_t (threshold)")
 comp_df <- rbind(s1c,s1t,s2c,s2t) |>
-  filter(model_label != "Binom 1PL (logit)") |>
+  filter(model_label != "Binom 1PL") |>
   mutate(section=factor(section, levels=c("Section 1\n(GPCM DGP, |s|>1)",
                                            "Section 2\n(NP DGP, flex>0.67)")),
          metric=factor(metric, levels=c("ω_c (category)","ω_t (threshold)")))
@@ -501,7 +508,7 @@ p <- ggplot(comp_df, aes(x=model_label, y=imv, fill=section)) +
   facet_wrap(~metric, ncol=2) +
   scale_fill_manual(values=c("Section 1\n(GPCM DGP, |s|>1)"="#2166ac",
                               "Section 2\n(NP DGP, flex>0.67)"="#d6604d"), name=NULL) +
-  labs(x=NULL, y="Mean IMV(1PL-logit, model)  [positive = model wins]") +
+  labs(x=NULL, y="Mean IMV(Binom 1PL, model)  [positive = model wins]") +
   coord_flip() +
   theme_bw(base_size=10) + theme(strip.background=element_rect(fill="grey92"),
                                    legend.position="bottom", panel.grid.minor=element_blank())
@@ -525,18 +532,17 @@ all_rmse <- do.call(rbind, lapply(results, `[[`, "rmse")) |>
 all_imv  <- do.call(rbind, Filter(Negate(is.null), lapply(results, `[[`, "imv"))) |>
   mutate(model = normalise_model(model))
 all_pair <- do.call(rbind, Filter(Negate(is.null), lapply(results, `[[`, "pair_imv"))) |>
-  mutate(comparison = sub("1PL\\+logit", "Binom 1PL (logit)",
-                     sub("2PL\\+logit", "Binom 2PL (logit)", comparison)))
+  mutate(comparison = normalise_comparison(comparison))
 meta     <- do.call(rbind, lapply(names(results), function(nm) {
   r <- results[[nm]]
   data.frame(dataset=nm, K=r$K, ni=r$ni, N=r$N, stringsAsFactors=FALSE)
 }))
 
 model_levels <- c("PCM","GPCM","GRM","Tutz",
-                  "Binom 1PL (logit)","Binom 2PL (logit)","Binom 1PL (cloglog)","NP spline")
+                  "Binom 1PL","Binom 2PL","Binom cloglog","NP spline")
 model_type   <- c(PCM="Standard",GPCM="Standard",GRM="Standard",Tutz="Standard",
-                  `Binom 1PL (logit)`="Binomial",`Binom 2PL (logit)`="Binomial",
-                  `Binom 1PL (cloglog)`="Binomial",`NP spline`="Binomial")
+                  `Binom 1PL`="Binomial",`Binom 2PL`="Binomial",
+                  `Binom cloglog`="Binomial",`NP spline`="Binomial")
 pal <- c(Standard="#2166ac", Binomial="#d6604d")
 
 all_rmse <- all_rmse |>
@@ -599,10 +605,10 @@ save_pdf(p, "fig_imv_empirical", w=8, h=4)
 ## ── fig_pair_imv ──────────────────────────────────────────────────────────
 message("fig_pair_imv")
 pair_long <- all_pair |>
-  filter(comparison %in% c("Binom 1PL (logit)→PCM","Binom 2PL (logit)→GPCM")) |>
+  filter(comparison %in% c("Binom 1PL→PCM","Binom 2PL→GPCM")) |>
   pivot_longer(c(imv_c,imv_t), names_to="metric", values_to="imv") |>
   mutate(metric=recode(metric,imv_c="ω_c (category)",imv_t="ω_t (thresholded)"),
-         comparison=factor(comparison, levels=c("Binom 1PL (logit)→PCM","Binom 2PL (logit)→GPCM")))
+         comparison=factor(comparison, levels=c("Binom 1PL→PCM","Binom 2PL→GPCM")))
 ## Display range is clipped to [-0.1, 0.1] so the bulk of the distribution is
 ## readable; values beyond are piled into the end bins and counted on-panel.
 ## Means are computed from the unclipped values.
@@ -640,17 +646,17 @@ make_scatter <- function(mod_x, mod_y) {
     labs(x=paste("CV RMSE —",mod_x), y=paste("CV RMSE —",mod_y)) +
     theme_minimal(base_size=11)
 }
-p1 <- make_scatter("Binom 2PL (logit)","GPCM")
-p2 <- make_scatter("Binom 1PL (logit)","PCM")
+p1 <- make_scatter("Binom 2PL","GPCM")
+p2 <- make_scatter("Binom 1PL","PCM")
 p  <- ggpubr::ggarrange(p1, p2, ncol=2, common.legend=TRUE, legend="right")
 save_pdf(p, "fig_scatter_pairs", w=9, h=4.5)
 
 ## ── fig_gap_by_k ──────────────────────────────────────────────────────────
 message("fig_gap_by_k")
-gap_k <- all_rmse |> filter(model %in% c("GPCM","Binom 2PL (logit)")) |>
+gap_k <- all_rmse |> filter(model %in% c("GPCM","Binom 2PL")) |>
   select(dataset,model,rmse) |> pivot_wider(names_from=model,values_from=rmse) |>
   left_join(meta |> select(dataset,K,ni,N), by="dataset") |>
-  mutate(gap=`Binom 2PL (logit)`-GPCM)
+  mutate(gap=`Binom 2PL`-GPCM)
 p <- ggplot(gap_k, aes(x=K, y=gap)) +
   geom_hline(yintercept=0, linetype="dashed", colour="grey60") +
   geom_jitter(width=0.08, size=3, colour="#2166ac", alpha=0.75) +
@@ -658,12 +664,12 @@ p <- ggplot(gap_k, aes(x=K, y=gap)) +
                colour="black", inherit.aes=FALSE) +
   scale_x_continuous(breaks=3:8) +
   labs(x="K (number of response categories)",
-       y="RMSE(Binom 2PL logit) - RMSE(GPCM)") +
+       y="RMSE(Binom 2PL) - RMSE(GPCM)") +
   theme_minimal(base_size=13)
 save_pdf(p, "fig_gap_by_k", w=6, h=4)
 
 ## ── fig_imv_1pl ───────────────────────────────────────────────────────────
-## IMV vs. Binom 1PL (logit) floor — only available in new-format files
+## IMV vs. Binom 1PL floor — only available in new-format files
 message("fig_imv_1pl")
 all_imv_1pl <- do.call(rbind, Filter(Negate(is.null), lapply(results, `[[`, "imv_1pl")))
 if (!is.null(all_imv_1pl) && nrow(all_imv_1pl) > 0) {
@@ -692,7 +698,7 @@ if (!is.null(all_imv_1pl) && nrow(all_imv_1pl) > 0) {
     geom_hline(yintercept = 0, linetype = "dashed", colour = "grey40") +
     scale_fill_manual(values = pal, name = "Family") +
     facet_wrap(~metric) + coord_flip() +
-    labs(x = NULL, y = "Mean IMV above Binom 1PL (logit) floor") +
+    labs(x = NULL, y = "Mean IMV above Binom 1PL floor") +
     theme_minimal(base_size = 13) + theme(legend.position = "right")
   save_pdf(p, "fig_imv_1pl", w = 8, h = 4)
 } else {
@@ -756,7 +762,7 @@ if (!is.null(all_asym) && nrow(all_asym) > 0) {
   d_ai <- all_asym |>
     select(dataset, mean_log_gap_ratio) |>
     left_join(meta |> select(dataset, K), by = "dataset") |>
-    inner_join(all_pair |> filter(comparison == "Binom 2PL (logit)→GPCM") |>
+    inner_join(all_pair |> filter(comparison == "Binom 2PL→GPCM") |>
                  select(dataset, imv_c), by = "dataset") |>
     filter(is.finite(mean_log_gap_ratio), is.finite(imv_c))
   r_ai  <- cor(d_ai$mean_log_gap_ratio, d_ai$imv_c)
