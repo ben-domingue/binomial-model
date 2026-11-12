@@ -1,2 +1,6 @@
 irw/poly_compare_data/run.log
 sim/gpcm_binomial_report.html
+irw/poly_compare_data_imv040/preds/
+irw/poly_compare_data_imv040_*.log
+sim/results_imv040/*.log
+irw/poly_compare_data_imv040/miscoded_pre_fix/

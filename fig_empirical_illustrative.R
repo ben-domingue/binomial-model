@@ -44,13 +44,13 @@
 
 suppressPackageStartupMessages({
   library(irw)
-  library(imv)
   library(mirt)
   library(dplyr)
   library(ggplot2)
   library(tidyr)
 })
 source("/home/ben/Dropbox/projects/binomial_model/src/irw_fetch_cached.R")
+source("/home/ben/Dropbox/projects/binomial_model/src/imv_score.R")  # imv >= 0.4.0
 
 
 ## Pin the IRW corpus to the version the paper's results were computed
@@ -61,7 +61,8 @@ IRW_VERSION <- 252
 irw::irw_use_version(version = IRW_VERSION)
 
 set.seed(20260717)
-OUT <- "/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs/fig_empirical_illustrative.pdf"
+OUT <- file.path(Sys.getenv("FIG_OUT", "/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs"),
+                 "fig_empirical_illustrative.pdf")
 
 MIN_N     <- 200
 MAX_ITEMS <- 60L
@@ -77,35 +78,6 @@ binom_2pl <- createItem("binom_2pl",
   par = c(a = 1, b = 0), est = c(TRUE, TRUE),
   P = function(par, Theta, ncat) binom_P(plogis(par[1] * Theta[, 1] - par[2]), ncat)
 )
-
-# ── IMV helpers (identical to poly_compare_multi_compute.R) ──────────────────
-imv_c_fn <- function(y, pctt.tab, p1, p2) {
-  nn  <- length(pctt.tab); om <- numeric(nn); iis <- 0:(nn - 1)
-  for (ii in iis) {
-    ns <- om.tmp <- numeric()
-    for (jj in iis[-match(ii, iis)]) {
-      y2   <- y[y$resp %in% c(ii, jj), ]
-      resp <- ifelse(y2$resp == ii, 1, 0)
-      p1v  <- y2[[paste0(p1, ii)]] / (y2[[paste0(p1, ii)]] + y2[[paste0(p1, jj)]])
-      p2v  <- y2[[paste0(p2, ii)]] / (y2[[paste0(p2, ii)]] + y2[[paste0(p2, jj)]])
-      om.tmp[as.character(jj)] <- imv.binary(resp, p1v, p2v)
-      ns[as.character(jj)]     <- nrow(y2)
-    }
-    om[ii + 1] <- sum(om.tmp * ns) / sum(ns)
-  }
-  sum(om * pctt.tab) / sum(pctt.tab)
-}
-imv_t_fn <- function(y, pctt.tab, p1, p2) {
-  nn <- length(pctt.tab); om <- numeric(nn - 1)
-  for (ii in 0:(nn - 2)) {
-    resp <- ifelse(y$resp <= ii, 1, 0)
-    pr1  <- rowSums(y[, paste0(p1, 0:ii), drop = FALSE])
-    pr2  <- rowSums(y[, paste0(p2, 0:ii), drop = FALSE])
-    om[ii + 1] <- imv.binary(resp, pr1, pr2)
-  }
-  wts <- pctt.tab[1:(nn - 1)] / (1 - pctt.tab[nn])
-  sum(om * wts) / sum(wts)
-}
 
 # ── Fetch + fit one dataset ───────────────────────────────────────────────────
 fit_dataset <- function(tab) {
@@ -127,6 +99,9 @@ fit_dataset <- function(tab) {
 
   if (ncol(resp_mat) > MAX_ITEMS) resp_mat <- resp_mat[, sample(ncol(resp_mat), MAX_ITEMS), drop = FALSE]
   if (nrow(resp_mat) > MAX_N)     resp_mat <- resp_mat[sample(nrow(resp_mat), MAX_N), , drop = FALSE]
+
+  # Recode each item to 0..K-1, as mirt does internally (see poly_compare_multi_compute.R)
+  resp_mat[] <- apply(resp_mat, 2, function(x) match(x, sort(unique(na.omit(x)))) - 1L)
 
   ni <- ncol(resp_mat); N <- nrow(resp_mat)
   message("  N=", N, "  items=", ni, "  K=", K)
@@ -166,15 +141,12 @@ fit_dataset <- function(tab) {
   probs_gpcm <- predict_probs(mod_gpcm, theta_gpcm)
   probs_b2pl <- predict_probs(mod_b2pl, theta_b2pl)
 
-  train_obs <- as.integer(train_mat[!is.na(train_mat)])
-  pctt.tab  <- as.numeric(table(factor(train_obs, levels = 0:(K - 1)))) / length(train_obs)
-
-  y_imv <- as.data.frame(probs_b2pl); colnames(y_imv) <- paste0("p1", 0:(K - 1))
-  y_imv$resp <- obs_vals
-  for (k in 0:(K - 1)) y_imv[[paste0("p2", k)]] <- probs_gpcm[, k + 1]
-  y_imv <- y_imv[complete.cases(y_imv), ]
-  omega_c <- imv_c_fn(y_imv, pctt.tab, "p1", "p2")
-  omega_t <- imv_t_fn(y_imv, pctt.tab, "p1", "p2")
+  # Binom 2PL -> GPCM, by item via the imv package (imv_score.R)
+  ok <- complete.cases(probs_b2pl, probs_gpcm)
+  v  <- imv_by_item(obs_vals[ok], test_cells[ok, 2], probs_b2pl[ok, , drop = FALSE],
+                    probs_gpcm[ok, , drop = FALSE], K)
+  omega_c <- v[["imv_c"]]
+  omega_t <- v[["imv_t"]]
   message(sprintf("  Binom 2PL -> GPCM:  omega_c = %.3f  omega_t = %.3f", omega_c, omega_t))
 
   # GPCM threshold (b) estimates, per item, for the asymmetry annotation

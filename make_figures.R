@@ -12,8 +12,8 @@ suppressPackageStartupMessages({
   library(RColorBrewer)
 })
 
-OUT  <- "/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs"
-SIM  <- "/home/ben/Dropbox/projects/binomial_model/src/sim"
+OUT  <- Sys.getenv("FIG_OUT", "/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs")
+SIM  <- Sys.getenv("FIG_SIM", "/home/ben/Dropbox/projects/binomial_model/src/sim")
 VIG  <- "/home/ben/Dropbox/projects/binomial_model/src/irw"
 
 W <- 7   # default figure width  (inches)
@@ -511,7 +511,7 @@ save_pdf(p, "fig_cross_section", w=8, h=4.5)
 ## EMPIRICAL FIGURES
 ## ═══════════════════════════════════════════════════════════════════════════
 message("\n── Loading empirical data ──")
-poly_dir <- file.path(VIG, "poly_compare_data")
+poly_dir <- Sys.getenv("FIG_POLY", file.path(VIG, "poly_compare_data"))
 fs       <- list.files(poly_dir, pattern="^multi_.+\\.rds$", full.names=TRUE)
 fs       <- fs[!grepl("multi_(results|summary)\\.rds$", fs)]
 raw      <- lapply(fs, readRDS)

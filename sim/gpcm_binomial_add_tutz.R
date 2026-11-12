@@ -8,18 +8,19 @@
 #
 # Usage: Rscript sims/gpcm_binomial_add_tutz.R
 
-suppressPackageStartupMessages(library(imv))
+source("imv_score.R")   # imv package >= 0.4.0; all IMVs go through imv_by_item()
 suppressPackageStartupMessages(library(mirt))
 suppressPackageStartupMessages(library(parallel))
 
 N_PERSONS       <- 1000L
 N_ITEMS         <- 10L
 N_REPS          <- 100L
-N_CORES         <- 4L
+N_CORES         <- as.integer(Sys.getenv("N_CORES", "4"))
 LNORM_SDLOG     <- 0.5
 THRESH_NOISE_SD <- 0.3
-existing_file   <- "sims/gpcm_binomial_results.rds"
-out_file        <- "sims/gpcm_binomial_results.rds"
+OUT_DIR         <- Sys.getenv("SIM_OUT_DIR", "sim/results_imv040")
+existing_file   <- file.path(OUT_DIR, "gpcm_binomial_results.rds")
+out_file        <- existing_file
 
 # ── Helpers (kept in sync with gpcm_binomial_sweep.R) ─────────────────────────
 make_thresholds <- function(K, asym = 0) {
@@ -63,40 +64,8 @@ fit_binom_1pl_logit <- function(X, theta) {
   list(a = 1.0, b = -coef(mod)[["(Intercept)"]])
 }
 
-imv_c <- function(y, pctt.tab, p1, p2) {
-  nn <- length(pctt.tab); iis <- 0:(nn - 1L); om <- numeric(nn)
-  for (ii in iis) {
-    ns <- om.tmp <- numeric()
-    for (jj in iis[-match(ii, iis)]) {
-      y2 <- y[y$resp %in% c(ii, jj), ]
-      resp <- ifelse(y2$resp == ii, 1, 0)
-      z <- data.frame(resp = resp,
-                      p1 = y2[[paste0(p1, ii)]] / (y2[[paste0(p1, ii)]] + y2[[paste0(p1, jj)]]),
-                      p2 = y2[[paste0(p2, ii)]] / (y2[[paste0(p2, ii)]] + y2[[paste0(p2, jj)]]))
-      om.tmp[as.character(jj)] <- imv.binary(z$resp, z$p1, z$p2)
-      ns[as.character(jj)]     <- nrow(z)
-    }
-    om[ii + 1L] <- sum(om.tmp * ns) / sum(ns)
-  }
-  sum(om * pctt.tab) / sum(pctt.tab)
-}
-imv_t <- function(y, pctt.tab, p1, p2) {
-  nn <- length(pctt.tab); om <- numeric(nn - 1L)
-  for (ii in 0:(nn - 2L)) {
-    resp <- ifelse(y$resp <= ii, 1, 0)
-    pr1  <- rowSums(y[, paste0(p1, 0:ii), drop = FALSE])
-    pr2  <- rowSums(y[, paste0(p2, 0:ii), drop = FALSE])
-    om[ii + 1L] <- imv.binary(resp, pr1, pr2)
-  }
-  wts <- pctt.tab[1:(nn - 1L)] / (1 - pctt.tab[nn])
-  sum(om * wts) / sum(wts)
-}
-make_pair_df <- function(probs_base, probs_enh, X, K) {
-  df <- as.data.frame(probs_base); colnames(df) <- paste0("p1", 0:(K - 1L))
-  df$resp <- X
-  for (k in 0:(K - 1L)) df[[paste0("p2", k)]] <- probs_enh[, k + 1L]
-  df[complete.cases(df), ]
-}
+# imv_c / imv_t / make_pair_df removed 2026-11-11: IMVs come from the imv
+# package via imv_by_item() in imv_score.R (by item, response-weighted).
 rmse_fn <- function(probs, X, K)
   sqrt(mean((as.numeric(probs %*% 0:(K - 1L)) / (K - 1L) - X / (K - 1L))^2))
 
@@ -149,7 +118,6 @@ run_one_tutz <- function(K, asym, rep_idx) {
   ho_mat  <- matrix(FALSE, N_PERSONS, N_ITEMS); ho_mat[ho_lin] <- TRUE
   ho_row  <- row(ho_mat)[ho_lin]; ho_col <- col(ho_mat)[ho_lin]
   all_X_ho <- X_mat[ho_lin]
-  pctt.tab <- as.numeric(table(factor(all_X_ho, levels = 0L:(K - 1L)))) / length(all_X_ho)
   X_tr_df  <- as.data.frame(X_mat); X_tr_df[ho_mat] <- NA_integer_
   theta_grid <- seq(-4, 4, length.out = 101L)
 
@@ -209,16 +177,20 @@ run_one_tutz <- function(K, asym, rep_idx) {
   if (is.null(pr_gpcm) || is.null(pr_tutz) || is.null(pr_1pl)) return(NULL)
 
   # Compute metrics for Tutz only
-  ydf_ceil <- make_pair_df(pr_tutz, pr_gpcm, all_X_ho, K)
-  ydf_floor <- make_pair_df(pr_1pl,  pr_tutz, all_X_ho, K)
+  score <- function(P0, P1) {
+    v <- tryCatch(imv_by_item(all_X_ho, ho_col, P0, P1, K), error = function(e) NULL)
+    if (is.null(v)) return(c(NA_real_, NA_real_, NA_real_, NA_real_))
+    c(v[["imv_c"]], v[["imv_t"]], attr(v, "floor_c"), attr(v, "floor_t"))
+  }
+  ceil <- score(pr_tutz, pr_gpcm); flo <- score(pr_1pl, pr_tutz)
 
   data.frame(
     K = K, asym = asym, rep = rep_idx, model = "tutz",
     rmse      = rmse_fn(pr_tutz, all_X_ho, K),
-    imv_c     = tryCatch(imv_c(ydf_ceil,  pctt.tab, "p1", "p2"), error = function(e) NA_real_),
-    imv_t     = tryCatch(imv_t(ydf_ceil,  pctt.tab, "p1", "p2"), error = function(e) NA_real_),
-    imv_c_1pl = tryCatch(imv_c(ydf_floor, pctt.tab, "p1", "p2"), error = function(e) NA_real_),
-    imv_t_1pl = tryCatch(imv_t(ydf_floor, pctt.tab, "p1", "p2"), error = function(e) NA_real_),
+    imv_c     = ceil[1], imv_t     = ceil[2],
+    imv_c_1pl = flo[1],  imv_t_1pl = flo[2],
+    floor_c   = ceil[3], floor_t   = ceil[4],
+    floor_c_1pl = flo[3], floor_t_1pl = flo[4],
     stringsAsFactors = FALSE
   )
 }
@@ -252,6 +224,7 @@ all_model_names <- c("gpcm", "pcm", "grm", "tutz",
                      "binom_1pl_logit", "binom_1pl_scobit",
                      "binom_1pl_cloglog", "binom_1pl_cauchit",
                      "binom_2pl_logit", "np_spline")
+existing <- existing[existing$model != "tutz", ]   # idempotent rerun
 combined <- rbind(existing, tutz_df)
 combined$model <- factor(combined$model, levels = all_model_names)
 saveRDS(combined, out_file)
