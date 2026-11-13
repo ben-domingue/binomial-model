@@ -106,6 +106,9 @@ all_df <- all_df |>
 
 p <- ggplot(all_df, aes(x = threshold, y = item_rank, colour = factor(k))) +
   geom_vline(xintercept = 0, colour = "grey85") +
+  # one faint horizontal guide per item so each item's thresholds read as a row
+  geom_hline(data = distinct(all_df, row, item_rank),
+             aes(yintercept = item_rank), colour = "grey80", linewidth = 0.3) +
   geom_point(size = 1.6) +
   scale_colour_brewer(palette = "Set1", name = "threshold\nindex") +
   scale_y_continuous(breaks = NULL) +
