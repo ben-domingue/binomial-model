@@ -625,7 +625,7 @@ panel_stats <- pair_long |> group_by(metric,comparison) |>
 pair_long <- pair_long |> group_by(metric,comparison) |>
   mutate(imv=pmin(pmax(imv,-0.1),0.1)) |> ungroup()
 ## Simulation benchmarks for the same pairwise comparisons, pooled over all K:
-##   Study 1 (GPCM DGP): teal dot-dash line = median over replications and s.
+##   Study 1 (GPCM DGP): grey band = 10th-90th percentile over replications and s.
 ##   Study 2 (NP DGP):   orange dotted line = median over replications with flex <= 0.1.
 ## IMV(Binom 1PL, PCM) is stored as imv_*_1pl for model "pcm"; IMV(Binom 2PL, GPCM)
 ## is stored as imv_* for model "binom_2pl_logit".
@@ -641,16 +641,17 @@ sim_pair <- function(dd, xvar) {
 }
 bench_s1 <- sim_pair(readRDS(file.path(SIM,"gpcm_binomial_results.rds")), "asym") |>
   group_by(metric,comparison) |>
-  summarise(m=median(imv), n=n(), .groups="drop")
+  summarise(lo=quantile(imv,.1), hi=quantile(imv,.9), .groups="drop")
 bench_s2 <- sim_pair(readRDS(file.path(SIM,"gpcm_binomial_results_np.rds")), "flex") |>
   filter(dx <= 0.1) |>
   group_by(metric,comparison) |>
   summarise(m=median(imv), n=n(), .groups="drop")
 print(bench_s1); print(bench_s2)
 p <- ggplot(pair_long, aes(x=imv)) +
+  geom_rect(data=bench_s1, aes(xmin=lo, xmax=hi, ymin=-Inf, ymax=Inf),
+            fill="grey60", alpha=0.25, inherit.aes=FALSE) +
   geom_histogram(bins=20, fill="#2166ac", colour="white", alpha=0.85) +
   geom_vline(xintercept=0, linetype="dashed", colour="grey40") +
-  geom_vline(data=bench_s1, aes(xintercept=m), colour="#1b9e77", linetype="4212", linewidth=0.8) +
   geom_vline(data=bench_s2, aes(xintercept=m), colour="darkorange3", linetype="22", linewidth=0.8) +
   geom_vline(data=panel_stats, aes(xintercept=mean_x), colour="firebrick", linewidth=0.8) +
   geom_text(data=panel_stats, aes(label=paste0("mean = ",round(mean_imv,3))),
