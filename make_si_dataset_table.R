@@ -1,7 +1,7 @@
 suppressPackageStartupMessages({ library(dplyr) })
 
 OUT      <- Sys.getenv("TAB_OUT", "/home/ben/Dropbox/Apps/Overleaf/binomial_model")
-poly_dir <- Sys.getenv("FIG_POLY", "/home/ben/Dropbox/projects/binomial_model/src/irw/poly_compare_data")
+poly_dir <- Sys.getenv("FIG_POLY", "/home/ben/Dropbox/projects/binomial_model/src/irw/poly_compare_data_imv040")
 
 normalise_model <- function(m) {
   m <- as.character(m)

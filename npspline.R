@@ -77,12 +77,18 @@ pt_df$theta_lab <- factor(
 )
 
 # ── vline helper ──────────────────────────────────────────────────────────────
-vlines <- data.frame(th = THETAS)
+vlines <- data.frame(th = THETAS, lab = paste0("θ = ", THETAS))
+# Solid dark-grey markers (dashed would be confused with the binomial curves),
+# labelled at the top so they tie to Panel C.
+vlab <- function(ytop) geom_label(data = vlines, aes(x = th, y = ytop, label = lab),
+                                  inherit.aes = FALSE, size = 2.6, colour = "grey25",
+                                  fill = "white", border.colour = NA, label.padding = unit(0.1, "lines"))
 
 # ── Panel A: ERF ──────────────────────────────────────────────────────────────
 pA <- ggplot(grid_df, aes(x = th)) +
   geom_vline(data = vlines, aes(xintercept = th),
-             linetype = "dashed", colour = "grey70", linewidth = 0.5) +
+             colour = "grey40", linewidth = 0.8) +
+  vlab(K - 1) +
   geom_line(aes(y = erfG, colour = "GPCM"),    linewidth = 1.1) +
   geom_line(aes(y = erfN, colour = "Mean-matched\nbinomial"), linewidth = 1.0,
             linetype = "dashed") +
@@ -110,8 +116,9 @@ crf_long$model <- factor(crf_long$model, levels = c("GPCM", "Mean-matched\nbinom
 
 pB <- ggplot(crf_long, aes(x = th, y = prob, colour = k)) +
   geom_vline(data = vlines, aes(xintercept = th),
-             linetype = "dashed", colour = "grey70", linewidth = 0.5,
+             colour = "grey40", linewidth = 0.8,
              inherit.aes = FALSE) +
+  vlab(1) +
   geom_line(aes(linetype = model), linewidth = 0.9) +
   scale_colour_manual(values = CAT_COLS[seq_len(K)], name = "k") +
   scale_linetype_manual(values = c("GPCM" = "solid", "Mean-matched\nbinomial" = "dashed"),

@@ -13,7 +13,7 @@ suppressPackageStartupMessages({
 })
 
 OUT  <- Sys.getenv("FIG_OUT", "/home/ben/Dropbox/Apps/Overleaf/binomial_model/figs")
-SIM  <- Sys.getenv("FIG_SIM", "/home/ben/Dropbox/projects/binomial_model/src/sim")
+SIM  <- Sys.getenv("FIG_SIM", "/home/ben/Dropbox/projects/binomial_model/src/sim/results_imv040")
 VIG  <- "/home/ben/Dropbox/projects/binomial_model/src/irw"
 
 W <- 7   # default figure width  (inches)
@@ -435,7 +435,9 @@ binom_cum_f1 <- sapply(seq_len(K_np - 1L), function(k)
   pbinom(k - 1L, K_np - 1L, p_f1, lower.tail = FALSE))
 library(patchwork)
 bound_pal4 <- brewer.pal(4,"RdYlBu")
-erf_cols <- c("True NP DGP"="black", "GRM fit"="#2166ac", "Binom 1PL fit"="#d6604d")
+## ERF colours chosen to avoid clashing with the RdYlBu boundary palette; the true
+## ERF is a thick grey band so the near-coincident GRM fit stays visible on top.
+erf_cols <- c("True NP DGP"="grey65", "GRM fit"="black", "Binom 1PL fit"="#7b3294")
 ## ERF panel
 erf_df <- data.frame(
   theta = rep(theta_g, 3),
@@ -445,10 +447,11 @@ erf_df <- data.frame(
 erf_df$model <- factor(erf_df$model, levels=names(erf_cols))
 erf_df$panel <- "Expected response functions"
 p_erf <- ggplot(erf_df, aes(x=theta, y=erf, colour=model, linetype=model)) +
-  geom_line(linewidth=0.9) +
+  geom_line(aes(linewidth=model)) +
   facet_wrap(~panel) +
   scale_colour_manual(values=erf_cols, name=NULL) +
-  scale_linetype_manual(values=c("True NP DGP"="solid","GRM fit"="dashed","Binom 1PL fit"="dotdash"), name=NULL) +
+  scale_linewidth_manual(values=c("True NP DGP"=2.6,"GRM fit"=0.8,"Binom 1PL fit"=0.9), name=NULL) +
+  scale_linetype_manual(values=c("True NP DGP"="solid","GRM fit"="22","Binom 1PL fit"="solid"), name=NULL) +
   scale_x_continuous(breaks=-2:2, name=expression(theta)) +
   scale_y_continuous(name=expression(E(X~"|"~theta))) +
   theme_bw(base_size=10) + theme(strip.background=element_rect(fill="grey92"),
@@ -457,6 +460,7 @@ p_erf <- ggplot(erf_df, aes(x=theta, y=erf, colour=model, linetype=model)) +
                                    legend.justification=c(0, 1),
                                    legend.background=element_rect(fill="white", colour=NA),
                                    legend.key.size=unit(0.9,"lines"),
+                                   legend.key.width=unit(1.6,"lines"),
                                    legend.text=element_text(size=7.5))
 ## Boundary panels
 panel_labels <- c(np="True NP DGP\n(K-1 free splines)",
@@ -518,7 +522,7 @@ save_pdf(p, "fig_cross_section", w=8, h=4.5)
 ## EMPIRICAL FIGURES
 ## ═══════════════════════════════════════════════════════════════════════════
 message("\n── Loading empirical data ──")
-poly_dir <- Sys.getenv("FIG_POLY", file.path(VIG, "poly_compare_data"))
+poly_dir <- Sys.getenv("FIG_POLY", file.path(VIG, "poly_compare_data_imv040"))
 fs       <- list.files(poly_dir, pattern="^multi_.+\\.rds$", full.names=TRUE)
 fs       <- fs[!grepl("multi_(results|summary)\\.rds$", fs)]
 raw      <- lapply(fs, readRDS)
@@ -620,9 +624,35 @@ panel_stats <- pair_long |> group_by(metric,comparison) |>
          overflow=paste0(n_lo, " < -0.10   |   ", n_hi, " > 0.10"))
 pair_long <- pair_long |> group_by(metric,comparison) |>
   mutate(imv=pmin(pmax(imv,-0.1),0.1)) |> ungroup()
+## Simulation benchmarks for the same pairwise comparisons, pooled over all K:
+##   Study 1 (GPCM DGP): grey band = 10th-90th percentile over replications and s.
+##   Study 2 (NP DGP):   orange dotted line = median over replications with flex <= 0.1.
+## IMV(Binom 1PL, PCM) is stored as imv_*_1pl for model "pcm"; IMV(Binom 2PL, GPCM)
+## is stored as imv_* for model "binom_2pl_logit".
+sim_pair <- function(dd, xvar) {
+  dd$dx <- dd[[xvar]]
+  bind_rows(
+    dd |> filter(model=="pcm") |>
+      transmute(comparison="Binom 1PL→PCM", c=imv_c_1pl, t=imv_t_1pl, dx),
+    dd |> filter(model=="binom_2pl_logit") |>
+      transmute(comparison="Binom 2PL→GPCM", c=imv_c, t=imv_t, dx)) |>
+    pivot_longer(c(c,t), names_to="metric", values_to="imv") |>
+    mutate(metric=recode(metric,c="ω_c (category)",t="ω_t (thresholded)"))
+}
+bench_s1 <- sim_pair(readRDS(file.path(SIM,"gpcm_binomial_results.rds")), "asym") |>
+  group_by(metric,comparison) |>
+  summarise(lo=quantile(imv,.1), hi=quantile(imv,.9), .groups="drop")
+bench_s2 <- sim_pair(readRDS(file.path(SIM,"gpcm_binomial_results_np.rds")), "flex") |>
+  filter(dx <= 0.1) |>
+  group_by(metric,comparison) |>
+  summarise(m=median(imv), n=n(), .groups="drop")
+print(bench_s1); print(bench_s2)
 p <- ggplot(pair_long, aes(x=imv)) +
+  geom_rect(data=bench_s1, aes(xmin=lo, xmax=hi, ymin=-Inf, ymax=Inf),
+            fill="grey60", alpha=0.25, inherit.aes=FALSE) +
   geom_histogram(bins=20, fill="#2166ac", colour="white", alpha=0.85) +
   geom_vline(xintercept=0, linetype="dashed", colour="grey40") +
+  geom_vline(data=bench_s2, aes(xintercept=m), colour="darkorange3", linetype="22", linewidth=0.8) +
   geom_vline(data=panel_stats, aes(xintercept=mean_x), colour="firebrick", linewidth=0.8) +
   geom_text(data=panel_stats, aes(label=paste0("mean = ",round(mean_imv,3))),
             x=Inf, y=Inf, hjust=1.1, vjust=1.5, size=3.3, colour="firebrick", inherit.aes=FALSE) +
