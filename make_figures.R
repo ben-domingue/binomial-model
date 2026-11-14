@@ -624,35 +624,37 @@ panel_stats <- pair_long |> group_by(metric,comparison) |>
          overflow=paste0(n_lo, " < -0.10   |   ", n_hi, " > 0.10"))
 pair_long <- pair_long |> group_by(metric,comparison) |>
   mutate(imv=pmin(pmax(imv,-0.1),0.1)) |> ungroup()
-## Simulation benchmarks for the same pairwise comparisons, pooled over all K:
-##   Study 1 (GPCM DGP): grey band = 10th-90th percentile over replications and s.
-##   Study 2 (NP DGP):   orange dotted line = median over replications with flex <= 0.1.
-## IMV(Binom 1PL, PCM) is stored as imv_*_1pl for model "pcm"; IMV(Binom 2PL, GPCM)
-## is stored as imv_* for model "binom_2pl_logit".
-sim_pair <- function(dd, xvar) {
-  dd$dx <- dd[[xvar]]
-  bind_rows(
-    dd |> filter(model=="pcm") |>
-      transmute(comparison="Binom 1PL→PCM", c=imv_c_1pl, t=imv_t_1pl, dx),
-    dd |> filter(model=="binom_2pl_logit") |>
-      transmute(comparison="Binom 2PL→GPCM", c=imv_c, t=imv_t, dx)) |>
-    pivot_longer(c(c,t), names_to="metric", values_to="imv") |>
-    mutate(metric=recode(metric,c="ω_c (category)",t="ω_t (thresholded)"))
+## Simulation benchmark (Study 1, GPCM DGP, K = 5): grey band spans the range of
+## the GAM curve for the same comparison as plotted in the Study 1 figures, so the
+## band matches those figures exactly:
+##   Binom 2PL→GPCM = "Binom 2PL" curve in fig_imv_gpcm  (imv_*     for binom_2pl_logit)
+##   Binom 1PL→PCM  = "PCM" curve in fig_imv_floor        (imv_*_1pl for pcm)
+## Curves are extracted with the same geom_smooth() spec used in make_imv_pair().
+gam_range <- function(d, v) {
+  g <- ggplot(d, aes(x = asym, y = .data[[v]])) +
+    geom_smooth(method = "gam", formula = y ~ s(x, bs = "cs"), se = FALSE)
+  r <- range(layer_data(g)$y)
+  data.frame(lo = r[1], hi = r[2])
 }
-bench_s1 <- sim_pair(readRDS(file.path(SIM,"gpcm_binomial_results.rds")), "asym") |>
-  group_by(metric,comparison) |>
-  summarise(lo=quantile(imv,.1), hi=quantile(imv,.9), .groups="drop")
-bench_s2 <- sim_pair(readRDS(file.path(SIM,"gpcm_binomial_results_np.rds")), "flex") |>
-  filter(dx <= 0.1) |>
-  group_by(metric,comparison) |>
-  summarise(m=median(imv), n=n(), .groups="drop")
-print(bench_s1); print(bench_s2)
+bench <- bind_rows(
+  cbind(comparison = "Binom 2PL→GPCM", metric = "ω_c (category)",
+        gam_range(filter(res, model == "binom_2pl_logit"), "imv_c")),
+  cbind(comparison = "Binom 2PL→GPCM", metric = "ω_t (thresholded)",
+        gam_range(filter(res, model == "binom_2pl_logit"), "imv_t")),
+  cbind(comparison = "Binom 1PL→PCM",  metric = "ω_c (category)",
+        gam_range(filter(res, model == "pcm"), "imv_c_1pl")),
+  cbind(comparison = "Binom 1PL→PCM",  metric = "ω_t (thresholded)",
+        gam_range(filter(res, model == "pcm"), "imv_t_1pl"))
+) |> mutate(comparison = factor(comparison, levels = levels(pair_long$comparison)))
+print(bench)
 p <- ggplot(pair_long, aes(x=imv)) +
-  geom_rect(data=bench_s1, aes(xmin=lo, xmax=hi, ymin=-Inf, ymax=Inf),
+  geom_rect(data=bench, aes(xmin=lo, xmax=hi, ymin=-Inf, ymax=Inf),
             fill="grey60", alpha=0.25, inherit.aes=FALSE) +
+  ## thin edges so a near-zero-width band (flat curve) still shows as a line
+  geom_vline(data=bench, aes(xintercept=lo), colour="grey55", linewidth=0.3) +
+  geom_vline(data=bench, aes(xintercept=hi), colour="grey55", linewidth=0.3) +
   geom_histogram(bins=20, fill="#2166ac", colour="white", alpha=0.85) +
   geom_vline(xintercept=0, linetype="dashed", colour="grey40") +
-  geom_vline(data=bench_s2, aes(xintercept=m), colour="darkorange3", linetype="22", linewidth=0.8) +
   geom_vline(data=panel_stats, aes(xintercept=mean_x), colour="firebrick", linewidth=0.8) +
   geom_text(data=panel_stats, aes(label=paste0("mean = ",round(mean_imv,3))),
             x=Inf, y=Inf, hjust=1.1, vjust=1.5, size=3.3, colour="firebrick", inherit.aes=FALSE) +
