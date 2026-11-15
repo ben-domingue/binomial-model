@@ -46,6 +46,14 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
 .stats{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0 12px;font-size:11px;color:#888}
 .stats strong{color:#111;font-variant-numeric:tabular-nums}
 .note{font-size:10.5px;color:#999;line-height:1.5;margin-top:6px}
+.tiles{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px;margin:0 0 12px}
+.tile{border:0.5px solid #e0e0e0;border-radius:4px;padding:10px 12px}
+.tile.hero{border:1px solid #C53A35;background:#fdf6f5}
+.tile .t-label{font-size:11px;color:#666;font-weight:500}
+.tile .t-val{font-size:26px;font-weight:600;color:#C53A35;font-variant-numeric:tabular-nums;line-height:1.2;margin:2px 0}
+.tile .t-val.small{font-size:18px;color:#111}
+.tile .t-sub{font-size:10.5px;color:#888;line-height:1.4}
+@media (max-width:640px){.tiles{grid-template-columns:1fr}}
 @media (max-width:640px){.controls,.grid2{grid-template-columns:1fr}}
 </style>
 </head>
@@ -62,9 +70,9 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
 <div class="widget">
 
 <div class="desc">
-  <p><strong>Roles.</strong> <em>Data-generating model</em> (solid curves): the adjacent-category model with your step structure δ. <em>Approximating model</em> (dashed): the binomial with the same ERF. The <em>fixed ERF</em> is the expected-score curve both share; it is not itself a model that generates data.</p>
+  <p><strong>Roles.</strong> <em>Data-generating model</em> (solid curves): the adjacent-category model with your step structure τ. <em>Approximating model</em> (dashed): the binomial with the same ERF. The <em>fixed ERF</em> is the expected-score curve both share; it is not itself a model that generates data.</p>
   <p><strong>Try this:</strong> move the <em>s</em> slider. The ERF panel does not change at all, but the data-generating model’s category curves (solid) pull away from the binomial’s (dashed), and the KL readout grows. Click <em>Binomial spacing</em> and the data-generating model becomes the binomial itself.</p>
-  <p><strong>How it works.</strong> The model is adjacent-category (GPCM-type): P(X=k|θ) ∝ exp(Σ<sub>j≤k</sub>(η(θ) − δ<sub>j</sub>)). The step offsets δ<sub>k</sub> set the threshold structure; η(θ) is the link. For any choice of δ, η(θ) is solved at each θ so that E[X|θ] equals the fixed ERF <em>exactly</em> (expected score is strictly increasing in η, so the solution is unique). With δ<sub>k</sub> = log{k/(K−k)}, η(θ) = a(θ − b) is linear and the model <em>is</em> the binomial. With any other δ, η(θ) generally bends, so the data-generating model is GPCM-like but not a strict GPCM (which has linear η); the “η(θ) departure from linear” readout says how far it is from one. Adding a constant to every δ<sub>k</sub> only shifts η(θ), so only the gaps between offsets matter. To compare whole models (binomial, GPCM, GRM) that share an ERF, see <a href="cross-model-erf-explorer.html">Same ERF, different models</a>.</p>
+  <p><strong>How it works.</strong> The model is adjacent-category (GPCM-type): log{P(X=k|θ)/P(X=k−1|θ)} = η(θ) − τ<sub>k</sub>. The step offsets τ<sub>k</sub> set the threshold structure. η(θ) is the link: the part of every adjacent-category log-odds that depends on ability. For a GPCM, η(θ) = aθ and τ<sub>k</sub> = a·b<sub>k</sub>, giving the usual steps a(θ − b<sub>k</sub>); for the binomial, η(θ) = logit f(θ) and τ<sub>k</sub> = log{k/(K−k)}. Category k overtakes k−1 where η(θ) crosses τ<sub>k</sub>. For any choice of τ, η(θ) is solved at each θ so that E[X|θ] equals the fixed ERF <em>exactly</em> (expected score is strictly increasing in η, so the solution is unique). With τ<sub>k</sub> = log{k/(K−k)}, η(θ) = a(θ − b) is linear and the model <em>is</em> the binomial. With any other τ, η(θ) generally bends, so the data-generating model is GPCM-like but not a strict GPCM (which has linear η); the “η(θ) departure from linear” readout says how far it is from one. Adding a constant to every τ<sub>k</sub> only shifts η(θ), so only the gaps between offsets matter. To compare whole models (binomial, GPCM, GRM) that share an ERF, see <a href="cross-model-erf-explorer.html">Same ERF, different models</a>.</p>
 </div>
 
 <div class="controls">
@@ -76,7 +84,7 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
     <div class="row"><label>θ* (bars)</label><input type="range" id="thStar" min="-3" max="3" step="0.05" value="0"><span class="val" id="thStar-v"></span></div>
   </div>
   <div class="ctl-box">
-    <div class="ctl-title">Data-generating model: step structure δ (η scale)</div>
+    <div class="ctl-title">Data-generating model: step structure τ (η scale)</div>
     <div class="btns">
       <button id="m-binom" onclick="setMode('binom')">Binomial spacing</button>
       <button id="m-sim" onclick="setMode('sim')">Simulation shape (s, spread)</button>
@@ -85,7 +93,25 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
     <div class="row"><label>s (asymmetry)</label><input type="range" id="s" min="-2.08" max="2.08" step="0.02" value="1.5"><span class="val" id="s-v"></span></div>
     <div class="row"><label>spread</label><input type="range" id="spread" min="0.5" max="8" step="0.05" value="2.77"><span class="val" id="spread-v"></span></div>
     <div id="delta-sliders"></div>
-    <div class="note">Grey numbers are the binomial offsets. s and spread follow the simulation DGP (<code>make_thresholds</code>): gaps ∝ exp(s·j/(K−3)), max/min gap ratio e<sup>|s|</sup>, total span = spread; s = 0 is equal spacing. Dragging an individual δ switches to a custom structure.</div>
+    <div class="note">Grey numbers are the binomial offsets. s and spread follow the simulation DGP (<code>make_thresholds</code>): gaps ∝ exp(s·j/(K−3)), max/min gap ratio e<sup>|s|</sup>, total span = spread; s = 0 is equal spacing. Dragging an individual τ switches to a custom structure.</div>
+  </div>
+</div>
+
+<div class="tiles">
+  <div class="tile hero">
+    <div class="t-label">Structural loss: KL(data-generating model ‖ binomial)</div>
+    <div class="t-val"><span id="st-kl">—</span> <span style="font-size:13px;font-weight:500;color:#888">nats per response</span></div>
+    <div class="t-sub">Averaged over θ ~ N(0,1). At θ* = <span id="st-thS">—</span>: <strong id="st-kl-at">—</strong>. Zero means the categories match the binomial exactly; the ERF is identical either way.</div>
+  </div>
+  <div class="tile">
+    <div class="t-label">ERF deviation (max)</div>
+    <div class="t-val small" id="st-erf">—</div>
+    <div class="t-sub">Numerical error only: the ERF is held fixed.</div>
+  </div>
+  <div class="tile">
+    <div class="t-label">η(θ) departure from linear</div>
+    <div class="t-val small" id="st-lin">—</div>
+    <div class="t-sub">0 = a strict GPCM; larger = the link must bend.</div>
   </div>
 </div>
 
@@ -101,7 +127,7 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
     <div class="canvas-wrap"><canvas id="c-erf"></canvas></div>
   </div>
   <div class="panel">
-    <div class="panel-title">Link η(θ): data-generating model (solid) vs binomial (dashed); horizontal lines = δ<sub>k</sub></div>
+    <div class="panel-title">Link η(θ): data-generating model (solid) vs binomial (dashed); horizontal lines = τ<sub>k</sub>. For a GPCM η(θ) = aθ; for the binomial η(θ) = logit f(θ).</div>
     <div class="canvas-wrap"><canvas id="c-eta"></canvas></div>
   </div>
   <div class="panel">
@@ -111,12 +137,7 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
 </div>
 
 <div class="stats">
-  <div>ERF max deviation from the fixed ERF: <strong id="st-erf">—</strong></div>
-  <div>Category KL(data-generating model ‖ binomial), avg over θ~N(0,1): <strong id="st-kl">—</strong> nats</div>
-  <div>η(θ) departure from linear (weighted RMSE): <strong id="st-lin">—</strong></div>
-</div>
-<div class="stats" style="margin-top:-6px">
-  <div>Thresholds on θ scale (where η(θ) crosses δ<sub>k</sub>): <strong id="st-th">—</strong></div>
+  <div>Thresholds on θ scale (where η(θ) crosses τ<sub>k</sub>): <strong id="st-th">—</strong></div>
 </div>
 <div class="note">KL is the expected log-loss penalty for predicting categories with the binomial when the data-generating model produces the data. Because the binomial has the same ERF, this is purely the structural term of the manuscript’s KL decomposition: the category-level loss that an ERF criterion such as RMSE cannot see. The ERF deviation is numerical error only.</div>
 
@@ -149,7 +170,7 @@ function buildDeltaSliders() {
   el.innerHTML = '';
   for (let k = 0; k < K - 1; k++) {
     const row = document.createElement('div'); row.className = 'row';
-    row.innerHTML = `<label><span class="sw" style="background:${PAL[k + 1]};width:8px;height:8px"></span> δ<sub>${k + 1}</sub></label>` +
+    row.innerHTML = `<label><span class="sw" style="background:${PAL[k + 1]};width:8px;height:8px"></span> τ<sub>${k + 1}</sub></label>` +
       `<input type="range" id="d${k}" min="-5" max="5" step="0.05"><span class="val" id="d${k}-v"></span><span class="ref">${bd[k].toFixed(2)}</span>`;
     el.appendChild(row);
     row.querySelector('input').addEventListener('input', e => { delta[k] = +e.target.value; mode = 'custom'; update(); });
@@ -196,6 +217,9 @@ function update() {
   let kl = 0;
   cur.probs.forEach((p, i) => { let s = 0; p.forEach((v, k) => { if (v > 1e-300) s += v * Math.log(v / Math.max(bin.probs[i][k], 1e-300)); }); kl += W[i] * s; });
   $('st-kl').textContent = kl.toFixed(4);
+  { const pS = acProbs(acSolveEta((K - 1) * logis(aT * (thS - bT)), delta), delta), qS = acProbs(acSolveEta((K - 1) * logis(aT * (thS - bT)), binomDelta(K)), binomDelta(K));
+    $('st-thS').textContent = thS.toFixed(2);
+    $('st-kl-at').textContent = pS.reduce((a, p, k) => p > 1e-300 ? a + p * Math.log(p / Math.max(qS[k], 1e-300)) : a, 0).toFixed(4) + ' nats'; }
   const mt = TH.reduce((s, t, i) => s + W[i] * t, 0), me = cur.eta.reduce((s, e, i) => s + W[i] * e, 0);
   const sxy = TH.reduce((s, t, i) => s + W[i] * (t - mt) * (cur.eta[i] - me), 0), sxx = TH.reduce((s, t, i) => s + W[i] * (t - mt) ** 2, 0);
   const slope = sxy / sxx, lin = Math.sqrt(TH.reduce((s, t, i) => s + W[i] * (cur.eta[i] - me - slope * (t - mt)) ** 2, 0));

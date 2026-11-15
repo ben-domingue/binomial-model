@@ -1,12 +1,12 @@
 /* Adjacent-category (GPCM-type) model with a free link, matched to a target ERF.
 
-   P(X = k | θ) ∝ exp( Σ_{j ≤ k} (η(θ) − δ_j) ),  k = 0..K−1.
+   P(X = k | θ) ∝ exp( Σ_{j ≤ k} (η(θ) − τ_j) ),  k = 0..K−1.
 
-   For fixed step offsets δ, E[X] is strictly increasing in η, so for any target
+   For fixed step offsets τ, E[X] is strictly increasing in η, so for any target
    expected score m in (0, K−1) there is exactly one η giving E[X] = m. Solving
    that pointwise in θ yields the unique member of this family with step
-   structure δ and the target ERF. Used by the fixed-ERF threshold explorer and
-   by the CRF editor's Randomize button. Works for any K (= δ.length + 1). */
+   structure τ and the target ERF. Used by the fixed-ERF threshold explorer and
+   by the CRF editor's Randomize button. Works for any K (= τ.length + 1). */
 
 function acProbs(eta, delta) {
   const K = delta.length + 1, ln = [0];
@@ -38,7 +38,7 @@ function acMatchERF(erf, delta) {
   return { eta, probs };
 }
 
-/* Step offsets that make this family the binomial: δ_k = log(k / (K − k)). */
+/* Step offsets that make this family the binomial: τ_k = log(k / (K − k)). */
 function binomDelta(K) { return Array.from({ length: K - 1 }, (_, i) => Math.log((i + 1) / (K - 1 - i))); }
 
 if (typeof module !== 'undefined') module.exports = { acProbs, acMean, acSolveEta, acMatchERF, binomDelta };
