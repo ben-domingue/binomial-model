@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Same ERF, Different Models</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:16px 20px}
+.page-header{max-width:900px;margin:0 auto 18px auto;padding-bottom:12px;border-bottom:1px solid #e0e0e0}
+.page-header h1{font-size:16px;font-weight:600;margin-bottom:4px}
+.page-header p{font-size:12px;color:#555;line-height:1.5}
+.page-header a,.desc a{color:#378ADD;text-decoration:none}
+.page-header a:hover,.desc a:hover{text-decoration:underline}
+.back-home{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#555;text-decoration:none;padding:4px 10px;border:0.5px solid #ccc;border-radius:4px;margin-bottom:10px}
+.back-home:hover{background:#f0f0f0;color:#111;text-decoration:none!important}
+.related-nav{max-width:900px;margin:0 auto 14px auto;display:flex;gap:6px;flex-wrap:wrap}
+.related-nav a{padding:4px 10px;font-size:11px;border:0.5px solid #ccc;border-radius:4px;color:#888;text-decoration:none}
+.related-nav a:hover{background:#f0f0f0;color:#111}
+.related-nav a.current{background:#f0f0f0;color:#111;font-weight:500;pointer-events:none}
+.widget{max-width:900px;margin:0 auto}
+.desc{font-size:11px;color:#777;line-height:1.6;margin-bottom:12px;padding:8px 10px;border-left:2px solid #ddd}
+.desc p+p{margin-top:6px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.ctl-box{border:0.5px solid #e0e0e0;border-radius:4px;padding:10px}
+.ctl-title{font-size:11px;font-weight:500;color:#888;margin-bottom:8px}
+.row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:#555}
+.row label{width:84px;flex-shrink:0}
+.row input[type=range]{flex:1;min-width:0}
+.row .val{width:44px;text-align:right;font-variant-numeric:tabular-nums;color:#111}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+.btns button{padding:4px 10px;font-size:11px;border:0.5px solid #ccc;border-radius:4px;background:transparent;color:#888;cursor:pointer}
+.btns button:hover{background:#f0f0f0}
+.btns button.active{background:#f0f0f0;color:#111;font-weight:500}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.panel{border:0.5px solid #e0e0e0;border-radius:4px;padding:10px}
+.panel-title{font-size:11px;font-weight:500;color:#888;margin-bottom:6px}
+.canvas-wrap{position:relative;height:220px}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#888;margin:4px 0 10px}
+.legend span{display:flex;align-items:center;gap:4px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px}
+.ln{display:inline-block;width:18px;border-top:2px solid #555}
+.ln.dash{border-top-style:dashed}
+table.cmp{width:100%;border-collapse:collapse;font-size:11px;margin:0 0 4px}
+table.cmp th{text-align:left;font-weight:500;color:#888;border-bottom:1px solid #e0e0e0;padding:5px 6px}
+table.cmp td{padding:5px 6px;border-bottom:0.5px solid #f0f0f0;font-variant-numeric:tabular-nums;color:#333}
+table.cmp td.num,table.cmp th.num{text-align:right}
+table.cmp tr{cursor:pointer}
+table.cmp tbody tr:hover td{background:#fafafa}
+table.cmp tr.sel td{background:#f0f0f0;color:#111;font-weight:500}
+.note{font-size:10.5px;color:#999;line-height:1.5;margin-top:6px}
+.hidden{display:none!important}
+@media (max-width:640px){.controls,.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <a class="back-home" href="index.html">← Back to home</a>
+  <h1>Same ERF, Different Models</h1>
+  <p>Pick a target model, which plays the role of the data-generating model. The page finds the binomial, GPCM, and GRM that best reproduce its expected response function, then shows how differently each one spreads probability across categories.</p>
+</div>
+
+<nav class="related-nav">
+  <a href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
+  <a href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
+  <a href="crf-editor.html">CRF editor</a>
+  <a href="fixed-erf-threshold-explorer.html">Fixed-ERF threshold explorer</a>
+  <a class="current" href="cross-model-erf-explorer.html">Same ERF, different models</a>
+</nav>
+
+<div class="widget">
+
+<div class="desc">
+  <p><strong>How to read it.</strong> The target’s curves are solid; the selected candidate’s are dashed. Every candidate matches the target’s ERF exactly or nearly so, so the ERF panel always shows two overlapping curves. The difference shows up in the category curves and in the KL column of the table.</p>
+  <p><strong>Try this.</strong> (1) Binomial target, nearest GRM: the GRM matches the ERF by tying all its thresholds and puts nearly all probability on the lowest and highest categories (see the bars). (2) GRM target, nearest GPCM: the ERF matches exactly, but the category curves differ. (3) GPCM target, nearest GRM: here even the ERF match is only approximate.</p>
+  <p><strong>Why the exact matches happen.</strong> The binomial with a logistic link <em>is</em> a GPCM, so a GPCM can always reproduce it. More surprisingly, <em>every GRM ERF is exactly a GPCM ERF</em> with the same slope: Σ<sub>k</sub> logistic(a(θ−β<sub>k</sub>)) is the derivative in η = aθ of log Π<sub>k</sub>(1 + e<sup>η−aβ<sub>k</sub></sup>), and that product equals Σ<sub>k</sub> e<sup>kη</sup> e<sub>k</sub>(x), with x<sub>k</sub> = e<sup>−aβ<sub>k</sub></sup> and e<sub>k</sub> the elementary symmetric polynomials. That is a GPCM normalizing constant with steps δ<sub>k</sub> = log(e<sub>k−1</sub>/e<sub>k</sub>). The matching GPCM’s categories follow a Poisson-binomial distribution (a sum of K−1 independent logistic Bernoullis), not the GRM’s. The reverse fails: a GPCM ERF is a GRM ERF only when that polynomial has all real roots. A GRM with tied thresholds has exactly the binomial’s ERF.</p>
+  <p><strong>Details.</strong> The binomial candidate uses f(θ) = ERF/(K−1), so it matches any ERF exactly. The GPCM and GRM candidates have linear links. The GPCM is always exact (the target itself, the binomial’s GPCM form, or the GRM→GPCM identity). The GRM is exact for a GRM target; otherwise it is fitted by Nelder–Mead to minimize ERF error, weighting θ by N(0,1). To hold the ERF fixed and vary the threshold structure directly, see the <a href="fixed-erf-threshold-explorer.html">fixed-ERF threshold explorer</a>.</p>
+</div>
+
+<div class="controls">
+  <div class="ctl-box">
+    <div class="ctl-title">Target model (the data-generating model)</div>
+    <div class="btns">
+      <button id="t-binom" onclick="setTarget('binom')">Binomial</button>
+      <button id="t-gpcm" onclick="setTarget('gpcm')">GPCM</button>
+      <button id="t-grm" onclick="setTarget('grm')">GRM</button>
+    </div>
+    <div class="row"><label>K</label><input type="range" id="K" min="4" max="7" step="1" value="5"><span class="val" id="K-v"></span></div>
+    <div class="row"><label>a</label><input type="range" id="aT" min="0.4" max="2.5" step="0.05" value="1.2"><span class="val" id="aT-v"></span></div>
+    <div class="row"><label>b (location)</label><input type="range" id="bT" min="-1.5" max="1.5" step="0.05" value="0"><span class="val" id="bT-v"></span></div>
+    <div class="row tgt-thr"><label>s (asymmetry)</label><input type="range" id="sT" min="-2.08" max="2.08" step="0.02" value="1.5"><span class="val" id="sT-v"></span></div>
+    <div class="row tgt-thr"><label>spread</label><input type="range" id="spreadT" min="0" max="5" step="0.05" value="3"><span class="val" id="spreadT-v"></span></div>
+    <div class="note" id="tgt-note"></div>
+  </div>
+  <div class="ctl-box">
+    <div class="ctl-title">Candidates matched to the target’s ERF (click a row to plot it)</div>
+    <table class="cmp">
+      <thead><tr><th>Candidate</th><th>ERF match</th><th class="num">ERF RMSE</th><th class="num">KL, nats</th></tr></thead>
+      <tbody id="cmp-body"></tbody>
+    </table>
+    <div class="note" id="par-note"></div>
+    <div class="note">ERF RMSE and KL(target ‖ candidate) both average over θ ~ N(0,1). KL is the expected log-loss penalty for predicting categories with the candidate when the target generates the data, which is the category-level loss an ERF criterion such as RMSE cannot see. Probabilities are floored at 10<sup>−12</sup>.</div>
+    <div class="row" style="margin-top:10px"><label>θ* (bars)</label><input type="range" id="thStar" min="-3" max="3" step="0.05" value="0"><span class="val" id="thStar-v"></span></div>
+  </div>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<div class="grid2">
+  <div class="panel">
+    <div class="panel-title" id="crf-title">Category response functions</div>
+    <div class="canvas-wrap"><canvas id="c-crf"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title" id="bar-title">Category probabilities at θ*</div>
+    <div class="canvas-wrap"><canvas id="c-bar"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title" id="erf-title">Expected response function</div>
+    <div class="canvas-wrap"><canvas id="c-erf"></canvas></div>
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="adjcat-solver.js"></script>
+<script>
+const TH = Array.from({ length: 161 }, (_, i) => -4 + i * 0.05);
+const W = (() => { const w = TH.map(t => Math.exp(-t * t / 2)); const s = w.reduce((a, b) => a + b, 0); return w.map(v => v / s); })();
+const PAL = ['#378ADD', '#1D9E75', '#BA7517', '#D85A30', '#7F77DD', '#C2417A', '#5F6B7A'];
+const CAND_NAMES = { binom: 'Binomial', gpcm: 'Nearest GPCM', grm: 'Nearest GRM' };
+const TGT_NAMES = { binom: 'Binomial', gpcm: 'GPCM', grm: 'GRM' };
+const PFLOOR = 1e-12;
+const logis = x => 1 / (1 + Math.exp(-x));
+const $ = id => document.getElementById(id);
+
+let target = 'binom', cand = 'grm';
+let fitCache = { key: null };
+
+/* ---------- model pieces ---------- */
+function simDelta(K, s, spread) {
+  // Mirrors make_thresholds() in sim/gpcm_binomial_*.R, with total_range = spread.
+  const n = K - 1;
+  if (s === 0 || n <= 2) return Array.from({ length: n }, (_, i) => -spread / 2 + spread * i / (n - 1));
+  let gaps = Array.from({ length: n - 1 }, (_, j) => Math.exp(s * j / (n - 2)));
+  const g = gaps.reduce((a, b) => a + b, 0); gaps = gaps.map(v => v / g * spread);
+  const b = [-spread / 2]; gaps.forEach(v => b.push(b[b.length - 1] + v));
+  return b;
+}
+function grmProbs(t, a, b) {
+  const K = b.length + 1, cum = [1, ...b.map(bk => logis(a * (t - bk))), 0];
+  return Array.from({ length: K }, (_, k) => Math.max(0, cum[k] - cum[k + 1]));
+}
+const gpcmProbs = (t, a, b) => acProbs(a * t, b.map(v => a * v));
+const meanOf = p => p.reduce((s, v, k) => s + k * v, 0);
+const wrmse = (x, y) => Math.sqrt(x.reduce((s, v, i) => s + W[i] * (v - y[i]) ** 2, 0));
+function avgKL(P, Q) {
+  let kl = 0;
+  P.forEach((p, i) => { let s = 0; p.forEach((v, k) => { if (v > PFLOOR) s += v * Math.log(v / Math.max(Q[i][k], PFLOOR)); }); kl += W[i] * s; });
+  return kl;
+}
+
+function targetSpec() {
+  const K = +$('K').value, a = +$('aT').value, b = +$('bT').value;
+  if (target === 'binom') return { K, a, b, thr: binomDelta(K).map(d => b + d / a) };  // binomial's GPCM steps, θ scale
+  return { K, a, b, thr: simDelta(K, +$('sT').value, +$('spreadT').value).map(d => b + d) };
+}
+function targetProbsAt(spec, t) {
+  if (target === 'binom') return acProbs(spec.a * (t - spec.b), binomDelta(spec.K));
+  if (target === 'gpcm') return gpcmProbs(t, spec.a, spec.thr);
+  return grmProbs(t, spec.a, spec.thr);
+}
+
+/* ---------- GRM ERF -> GPCM steps (exact identity) ---------- */
+function grmToGPCMsteps(a, beta) {
+  // Elementary symmetric polynomials of x_k = exp(−a β_k), on the log scale; δ_k = log(e_{k−1}/e_k), returned on the θ scale.
+  const n = beta.length; const le = [0, ...Array(n).fill(-Infinity)];
+  const lse = (p, q) => p === -Infinity ? q : q === -Infinity ? p : Math.max(p, q) + Math.log1p(Math.exp(-Math.abs(p - q)));
+  beta.forEach(bk => { const lx = -a * bk; for (let k = n; k >= 1; k--) le[k] = lse(le[k], le[k - 1] + lx); });
+  return Array.from({ length: n }, (_, k) => (le[k] - le[k + 1]) / a);
+}
+
+/* ---------- Nelder–Mead ---------- */
+function nelderMead(f, x0, scale = 0.4, maxIt = 2000, tol = 1e-14) {
+  const n = x0.length;
+  let S = [x0.slice()];
+  for (let i = 0; i < n; i++) { const x = x0.slice(); x[i] += scale; S.push(x); }
+  let F = S.map(f);
+  for (let it = 0; it < maxIt; it++) {
+    const ord = F.map((v, i) => i).sort((i, j) => F[i] - F[j]); S = ord.map(i => S[i]); F = ord.map(i => F[i]);
+    if (Math.abs(F[n] - F[0]) < tol) break;
+    const c = Array(n).fill(0); for (let i = 0; i < n; i++) for (let d = 0; d < n; d++) c[d] += S[i][d] / n;
+    const pt = (t) => c.map((v, d) => v + t * (S[n][d] - v));
+    const xr = pt(-1), fr = f(xr);
+    if (fr < F[0]) { const xe = pt(-2), fe = f(xe); if (fe < fr) { S[n] = xe; F[n] = fe; } else { S[n] = xr; F[n] = fr; } }
+    else if (fr < F[n - 1]) { S[n] = xr; F[n] = fr; }
+    else {
+      const xc = fr < F[n] ? pt(-0.5) : pt(0.5), fc = f(xc);
+      if (fc < Math.min(fr, F[n])) { S[n] = xc; F[n] = fc; }
+      else { for (let i = 1; i <= n; i++) { S[i] = S[i].map((v, d) => S[0][d] + 0.5 * (v - S[0][d])); F[i] = f(S[i]); } }
+    }
+  }
+  let bi = 0; F.forEach((v, i) => { if (v < F[bi]) bi = i; });
+  return { x: S[bi], f: F[bi] };
+}
+function bestOf(f, starts, scale) {
+  let best = null;
+  starts.forEach(x0 => { let r = nelderMead(f, x0, scale); r = nelderMead(f, r.x, scale / 4); if (!best || r.f < best.f) best = r; });
+  return best;
+}
+function unGRM(x) { const b = [x[1]]; for (let i = 2; i < x.length; i++) b.push(b[b.length - 1] + Math.exp(Math.max(x[i], -15))); return { a: Math.exp(x[0]), b }; }  // ordered
+function toGRMx(a, thr) { const s = [...thr].sort((p, q) => p - q); return [Math.log(a), s[0], ...s.slice(1).map((v, i) => Math.log(Math.max(v - s[i], 1e-4)))]; }
+
+function nearestModels(spec, erf) {
+  const key = JSON.stringify([target, spec.K, spec.a, spec.b, spec.thr]);
+  if (fitCache.key === key) return fitCache;
+  const K = spec.K, la = Math.log(spec.a), even = Array.from({ length: K - 1 }, (_, i) => spec.b - 1 + 2 * i / (K - 2));
+  const fR = x => { const { a, b } = unGRM(x); return TH.reduce((s, t, i) => { let m = 0; b.forEach(bk => m += logis(a * (t - bk))); return s + W[i] * (m - erf[i]) ** 2; }, 0); };
+  let gpcm, gpcmHow;
+  if (target === 'binom') { gpcm = { a: spec.a, b: spec.thr }; gpcmHow = 'exact (binomial is a GPCM)'; }
+  else if (target === 'grm') { gpcm = { a: spec.a, b: grmToGPCMsteps(spec.a, spec.thr) }; gpcmHow = 'exact (GRM→GPCM identity)'; }
+  else { gpcm = { a: spec.a, b: spec.thr }; gpcmHow = 'exact (same model)'; }
+  let grm, grmHow;
+  if (target === 'grm') { grm = { a: spec.a, b: spec.thr }; grmHow = 'exact (same model)'; }
+  else { grm = unGRM(bestOf(fR, [toGRMx(spec.a, spec.thr), toGRMx(spec.a, even), [la, spec.b, ...Array(K - 2).fill(-7)]], 0.4).x); grmHow = null; }
+  fitCache = { key, gpcm, grm, gpcmHow, grmHow };
+  return fitCache;
+}
+
+/* ---------- controls ---------- */
+function setTarget(t) { target = t; schedule(); }
+function setCand(c) { cand = c; schedule(); }
+
+const charts = {};
+function chart(id, cfg) { if (charts[id]) charts[id].destroy(); charts[id] = new Chart($(id), cfg); }
+function axes(yLabel, yMin, yMax) {
+  return {
+    animation: false, responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    scales: {
+      x: { type: 'linear', min: -4, max: 4, ticks: { font: { size: 9 }, color: '#888' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: 'θ', font: { size: 10 }, color: '#888' } },
+      y: { min: yMin, max: yMax, ticks: { font: { size: 9 }, color: '#888' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: yLabel, font: { size: 10 }, color: '#888' } }
+    }
+  };
+}
+const line = (ys, col, dash = [], wd = 1.8) => ({ data: TH.map((t, i) => ({ x: t, y: ys[i] })), borderColor: col, borderWidth: wd, pointRadius: 0, borderDash: dash });
+const vrule = (x, lo, hi) => ({ data: [{ x, y: lo }, { x, y: hi }], borderColor: '#bbb', borderWidth: 1, pointRadius: 0, borderDash: [3, 2] });
+const fmt = v => v.map(x => x.toFixed(2)).join(', ');
+
+let pending = false;
+function schedule() { if (!pending) { pending = true; requestAnimationFrame(() => { pending = false; update(); }); } }
+
+function update() {
+  const K = +$('K').value, thS = +$('thStar').value;
+  ['K', 'aT', 'bT', 'sT', 'spreadT', 'thStar'].forEach(id => $(id + '-v').textContent = (+$(id).value).toFixed(id === 'K' ? 0 : 2));
+  ['binom', 'gpcm', 'grm'].forEach(t => $('t-' + t).classList.toggle('active', target === t));
+  document.querySelectorAll('.tgt-thr').forEach(el => el.classList.toggle('hidden', target === 'binom'));
+
+  const spec = targetSpec();
+  $('tgt-note').textContent = target === 'binom'
+    ? 'E[X|θ] = (K−1)·logistic(a(θ−b)).'
+    : `Thresholds = b + simulation shape (s, spread), θ scale: ${fmt(spec.thr)}.` + (target === 'grm' && +$('spreadT').value === 0 ? ' Tied thresholds: this GRM has exactly the binomial’s ERF.' : '');
+
+  // Target and candidates
+  const P = TH.map(t => targetProbsAt(spec, t));
+  const erf = P.map(meanOf);
+  const fit = nearestModels(spec, erf);
+  const bn = acMatchERF(erf, binomDelta(K));
+  const C = {
+    binom: { probs: bn.probs, how: target === 'binom' ? 'exact (same model)' : 'exact (f = ERF/(K−1))', par: 'Binomial: f(θ) = ERF/(K−1)' },
+    gpcm: { probs: TH.map(t => gpcmProbs(t, fit.gpcm.a, fit.gpcm.b)), how: fit.gpcmHow, par: `Nearest GPCM: a = ${fit.gpcm.a.toFixed(2)}, b = ${fmt(fit.gpcm.b)}` },
+    grm: { probs: TH.map(t => grmProbs(t, fit.grm.a, fit.grm.b)), how: fit.grmHow, par: `Nearest GRM: a = ${fit.grm.a.toFixed(2)}, b = ${fmt(fit.grm.b)}` }
+  };
+  Object.values(C).forEach(c => {
+    c.erf = c.probs.map(meanOf); c.rmse = wrmse(c.erf, erf); c.kl = avgKL(P, c.probs);
+    if (!c.how) c.how = c.rmse < 1e-5 ? 'fitted; matches' : 'fitted; approximate';
+  });
+
+  $('cmp-body').innerHTML = Object.keys(C).map(k => {
+    const c = C[k], klTxt = c.kl < 1e-6 ? '0' : c.kl.toFixed(c.kl > 100 ? 0 : 3);
+    return `<tr data-c="${k}" class="${k === cand ? 'sel' : ''}"><td>${CAND_NAMES[k]}</td><td>${c.how}</td>` +
+      `<td class="num">${c.rmse < 1e-9 ? '0' : c.rmse.toExponential(1)}</td><td class="num">${klTxt}</td></tr>`;
+  }).join('');
+  document.querySelectorAll('#cmp-body tr').forEach(tr => tr.addEventListener('click', () => setCand(tr.dataset.c)));
+  $('par-note').textContent = `${C.gpcm.par}.  ${C.grm.par}.`;
+
+  // Legend
+  $('legend').innerHTML = Array.from({ length: K }, (_, k) => `<span><span class="sw" style="background:${PAL[k]}"></span>k=${k}</span>`).join('') +
+    `<span><span class="ln"></span>target (${TGT_NAMES[target]})</span><span><span class="ln dash"></span>${CAND_NAMES[cand]}</span>`;
+
+  // CRFs
+  const sel = C[cand], crfSets = [];
+  for (let k = 0; k < K; k++) {
+    crfSets.push(line(P.map(p => p[k]), PAL[k]));
+    crfSets.push(line(sel.probs.map(p => p[k]), PAL[k], [5, 3], 1.4));
+  }
+  crfSets.push(vrule(thS, 0, 1));
+  $('crf-title').textContent = `Category response functions: ${TGT_NAMES[target]} target (solid) vs ${CAND_NAMES[cand]} (dashed)`;
+  chart('c-crf', { type: 'line', data: { datasets: crfSets }, options: axes('P(X=k|θ)', 0, 1) });
+
+  // ERF
+  $('erf-title').textContent = `Expected response function: target (grey) vs ${CAND_NAMES[cand]} (blue, dashed)`;
+  chart('c-erf', { type: 'line', data: { datasets: [line(erf, '#aaa', [], 3), line(sel.erf, '#378ADD', [5, 3], 1.5), vrule(thS, 0, K - 1)] }, options: axes('E[X|θ]', 0, K - 1) });
+
+  // Bars at θ*
+  const pT = targetProbsAt(spec, thS), mS = meanOf(pT);
+  const pC = cand === 'binom' ? acProbs(acSolveEta(mS, binomDelta(K)), binomDelta(K))
+    : cand === 'gpcm' ? gpcmProbs(thS, fit.gpcm.a, fit.gpcm.b) : grmProbs(thS, fit.grm.a, fit.grm.b);
+  $('bar-title').textContent = `Category probabilities at θ* = ${thS.toFixed(2)}: target (solid, E[X] = ${mS.toFixed(2)}) vs ${CAND_NAMES[cand]} (pale, E[X] = ${meanOf(pC).toFixed(2)})`;
+  chart('c-bar', {
+    type: 'bar',
+    data: { labels: Array.from({ length: K }, (_, k) => 'k=' + k), datasets: [
+      { data: pT, backgroundColor: PAL.slice(0, K) },
+      { data: pC, backgroundColor: PAL.slice(0, K).map(c => c + '55') }
+    ] },
+    options: { animation: false, responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } },
+      scales: { x: { ticks: { font: { size: 9 }, color: '#888' }, grid: { display: false } },
+                y: { min: 0, max: 1, ticks: { font: { size: 9 }, color: '#888' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: 'P(X=k|θ*)', font: { size: 10 }, color: '#888' } } } }
+  });
+}
+
+['K', 'aT', 'bT', 'sT', 'spreadT', 'thStar'].forEach(id => $(id).addEventListener('input', schedule));
+update();
+</script>
+</body>
+</html>

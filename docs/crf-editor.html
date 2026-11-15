@@ -51,12 +51,14 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
   <a href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
   <a href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
   <a class="current" href="crf-editor.html">CRF editor</a>
+  <a href="fixed-erf-threshold-explorer.html">Fixed-ERF threshold explorer</a>
+  <a href="cross-model-erf-explorer.html">Same ERF, different models</a>
 </nav>
 
 <div class="widget" id="main-widget">
 
 <div class="drag-desc">
-  Each curve is a category response function P(X=k|θ) for the model seeded above. <strong>Click and drag any curve up or down</strong> — the editor automatically shifts two other categories in the opposite direction at that θ so total probability stays at 1 and the expected response function (right panel, dashed = original) stays exactly fixed. This is a hands-on way to explore the <a href="isoerf-degeneracy-explorer.html" style="color:#378ADD">isoERF set</a>: every curve you can reach by dragging has a different CRF but an identical ERF to the seed. Try pulling one category up in the middle of the θ range and watch the others compensate, or hit <strong>Randomize</strong> to jump to an unrelated point on the same isoERF fiber. If a fast or imprecise drag leaves the curve jagged, <strong>Smooth active curve</strong> smooths whichever category you last edited using the same probability-preserving mechanism, so the ERF stays locked.
+  Each curve is a category response function P(X=k|θ) for the model seeded above. <strong>Click and drag any curve up or down</strong> — the editor automatically shifts two other categories in the opposite direction at that θ so total probability stays at 1 and the expected response function (right panel, dashed = original) stays exactly fixed. This is a hands-on way to explore the <a href="isoerf-degeneracy-explorer.html" style="color:#378ADD">isoERF set</a>: every curve you can reach by dragging has a different CRF but an identical ERF to the seed. Try pulling one category up in the middle of the θ range and watch the others compensate, or hit <strong>Randomize</strong> to jump to an unrelated point on the same isoERF fiber (random adjacent-category step offsets, with the link solved at each θ so the ERF is unchanged; see the <a href="fixed-erf-threshold-explorer.html" style="color:#378ADD">fixed-ERF threshold explorer</a>). If a fast or imprecise drag leaves the curve jagged, <strong>Smooth active curve</strong> smooths whichever category you last edited using the same probability-preserving mechanism, so the ERF stays locked.
 </div>
 <div class="drag-model-toggle">
   <button class="active" onclick="setDragModel('grm',this)">Seed from GRM</button>
@@ -89,6 +91,7 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="isoerf-common.js"></script>
+<script src="adjcat-solver.js"></script>
 <script>
 let dragModel = 'grm', dragCRF = null, seedERF = null, dragChart = null, erfChart2 = null;
 let isDragging = false, dragCat = -1, lastDragX = -1, lastDragY = 0, lastEditedCat = -1;
@@ -143,7 +146,16 @@ function initDragCanvas() {
 }
 function setDragModel(m, btn) { dragModel = m; document.querySelectorAll('.drag-model-toggle button').forEach(b => b.classList.remove('active')); btn.classList.add('active'); seedDrag(m); renderDrag(); }
 function resetDrag() { seedDrag(dragModel); renderDrag(); }
-function randomizeDrag() { for (let i = 0; i < TH.length; i++) { const pts = [0, ...Array.from({ length: K - 1 }, () => Math.random()), 1].sort((a, b) => a - b); CATS.forEach(k => { dragCRF[k][i] = pts[k + 1] - pts[k]; }); } renderDrag(); }
+// Draw random (possibly disordered) adjacent-category step offsets, then solve
+// the link η(θ) pointwise so E[X|θ] equals the seed ERF exactly (adjcat-solver.js).
+// The previous version drew independent uniform spacings at each θ, which neither
+// preserved the ERF nor produced smooth curves.
+function randomizeDrag() {
+  const delta = Array.from({ length: K - 1 }, () => -3 + 6 * Math.random());
+  const { probs } = acMatchERF(seedERF, delta);
+  for (let i = 0; i < TH.length; i++) CATS.forEach(k => { dragCRF[k][i] = probs[i][k]; });
+  renderDrag();
+}
 function smoothActive() {
   if (lastEditedCat < 0) { document.getElementById('drag-active-cat').textContent = 'Drag a curve first, then smooth it'; return; }
   const src = [...dragCRF[lastEditedCat]], win = 4;

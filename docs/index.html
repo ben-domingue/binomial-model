@@ -108,6 +108,22 @@
     </span>
   </li>
   <li>
+    <a href="fixed-erf-threshold-explorer.html">Fixed-ERF threshold explorer</a>
+    <span class="desc">
+      Hold the expected response function fixed and change the threshold structure: for any set of
+      adjacent-category step offsets, the link is solved so the ERF is unchanged, showing how
+      different the category response functions can be behind an identical ERF.
+    </span>
+  </li>
+  <li>
+    <a href="cross-model-erf-explorer.html">Same ERF, different models</a>
+    <span class="desc">
+      Choose a binomial, GPCM, or GRM as the data-generating model and compare it with the other
+      models that best reproduce its expected response function. Several match it exactly (every
+      GRM ERF is also a GPCM ERF), yet their category probabilities differ.
+    </span>
+  </li>
+  <li>
     <a href="threshold-structure-explorer.html">Threshold independence: GRM, GPCM, and Binomial</a>
     <span class="desc">
       Switch between models and drag the threshold sliders to compare how much independent
@@ -120,7 +136,8 @@
     <span class="desc">
       Adjust ability, threshold asymmetry, number of categories, and discrimination to see where
       a binomial approximation's category-level prediction loss concentrates, even when its
-      expected response function matches the GPCM exactly.
+      expected response function matches the GPCM exactly, and how the best-fitting Binom 2PL's
+      KL divergence splits into structural and link-function parts.
     </span>
   </li>
 </ul>

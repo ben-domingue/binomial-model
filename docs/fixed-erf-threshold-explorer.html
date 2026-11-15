@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fixed-ERF Threshold Explorer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:16px 20px}
+.page-header{max-width:900px;margin:0 auto 18px auto;padding-bottom:12px;border-bottom:1px solid #e0e0e0}
+.page-header h1{font-size:16px;font-weight:600;margin-bottom:4px}
+.page-header p{font-size:12px;color:#555;line-height:1.5}
+.page-header a,.desc a{color:#378ADD;text-decoration:none}
+.page-header a:hover,.desc a:hover{text-decoration:underline}
+.back-home{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#555;text-decoration:none;padding:4px 10px;border:0.5px solid #ccc;border-radius:4px;margin-bottom:10px}
+.back-home:hover{background:#f0f0f0;color:#111;text-decoration:none!important}
+.related-nav{max-width:900px;margin:0 auto 14px auto;display:flex;gap:6px;flex-wrap:wrap}
+.related-nav a{padding:4px 10px;font-size:11px;border:0.5px solid #ccc;border-radius:4px;color:#888;text-decoration:none}
+.related-nav a:hover{background:#f0f0f0;color:#111}
+.related-nav a.current{background:#f0f0f0;color:#111;font-weight:500;pointer-events:none}
+.widget{max-width:900px;margin:0 auto}
+.desc{font-size:11px;color:#777;line-height:1.6;margin-bottom:12px;padding:8px 10px;border-left:2px solid #ddd}
+.desc p+p{margin-top:6px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.ctl-box{border:0.5px solid #e0e0e0;border-radius:4px;padding:10px}
+.ctl-title{font-size:11px;font-weight:500;color:#888;margin-bottom:8px}
+.row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:11px;color:#555}
+.row label{width:74px;flex-shrink:0}
+.row input[type=range]{flex:1;min-width:0}
+.row .val{width:44px;text-align:right;font-variant-numeric:tabular-nums;color:#111}
+.row .ref{width:40px;text-align:right;color:#aaa;font-variant-numeric:tabular-nums}
+.btns{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.btns button{padding:4px 10px;font-size:11px;border:0.5px solid #ccc;border-radius:4px;background:transparent;color:#888;cursor:pointer}
+.btns button:hover{background:#f0f0f0}
+.btns button.active{background:#f0f0f0;color:#111;font-weight:500}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.panel{border:0.5px solid #e0e0e0;border-radius:4px;padding:10px}
+.panel-title{font-size:11px;font-weight:500;color:#888;margin-bottom:6px}
+.canvas-wrap{position:relative;height:220px}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:#888;margin:4px 0 10px}
+.legend span{display:flex;align-items:center;gap:4px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px}
+.ln{display:inline-block;width:18px;border-top:2px solid #555}
+.ln.dash{border-top-style:dashed}
+.stats{display:flex;gap:18px;flex-wrap:wrap;margin:10px 0 12px;font-size:11px;color:#888}
+.stats strong{color:#111;font-variant-numeric:tabular-nums}
+.note{font-size:10.5px;color:#999;line-height:1.5;margin-top:6px}
+@media (max-width:640px){.controls,.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <a class="back-home" href="index.html">← Back to home</a>
+  <h1>Fixed-ERF Threshold Explorer</h1>
+  <p>Hold the expected response function fixed and change the threshold structure. Every configuration has exactly the same ERF as the binomial target; only the way probability is spread across categories changes.</p>
+</div>
+
+<nav class="related-nav">
+  <a href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
+  <a href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
+  <a href="crf-editor.html">CRF editor</a>
+  <a class="current" href="fixed-erf-threshold-explorer.html">Fixed-ERF threshold explorer</a>
+  <a href="cross-model-erf-explorer.html">Same ERF, different models</a>
+</nav>
+
+<div class="widget">
+
+<div class="desc">
+  <p><strong>Try this:</strong> move the <em>s</em> slider. The ERF panel does not change at all, but the category curves (solid) pull away from the binomial’s (dashed), and the KL readout grows. Click <em>Binomial spacing</em> to bring them back together.</p>
+  <p><strong>How it works.</strong> The model is adjacent-category (GPCM-type): P(X=k|θ) ∝ exp(Σ<sub>j≤k</sub>(η(θ) − δ<sub>j</sub>)). The step offsets δ<sub>k</sub> set the threshold structure; η(θ) is the link. For any choice of δ, η(θ) is solved at each θ so that E[X|θ] equals the target ERF <em>exactly</em> (expected score is strictly increasing in η, so the solution is unique). With δ<sub>k</sub> = log{k/(K−k)}, η(θ) = a(θ − b) is linear and the model <em>is</em> the binomial. With any other δ, η(θ) generally bends, so a strict GPCM (linear η) can only approximate this ERF. Adding a constant to every δ<sub>k</sub> only shifts η(θ), so only the gaps between offsets matter. To compare whole models (binomial, GPCM, GRM) that share an ERF, see <a href="cross-model-erf-explorer.html">Same ERF, different models</a>.</p>
+</div>
+
+<div class="controls">
+  <div class="ctl-box">
+    <div class="ctl-title">Target ERF (binomial, logistic link): E[X|θ] = (K−1)·logistic(a(θ−b))</div>
+    <div class="row"><label>K</label><input type="range" id="K" min="4" max="7" step="1" value="5"><span class="val" id="K-v"></span></div>
+    <div class="row"><label>a</label><input type="range" id="aT" min="0.4" max="2.5" step="0.05" value="1.2"><span class="val" id="aT-v"></span></div>
+    <div class="row"><label>b</label><input type="range" id="bT" min="-1.5" max="1.5" step="0.05" value="0"><span class="val" id="bT-v"></span></div>
+    <div class="row"><label>θ* (bars)</label><input type="range" id="thStar" min="-3" max="3" step="0.05" value="0"><span class="val" id="thStar-v"></span></div>
+  </div>
+  <div class="ctl-box">
+    <div class="ctl-title">Threshold structure (step offsets δ on the η scale)</div>
+    <div class="btns">
+      <button id="m-binom" onclick="setMode('binom')">Binomial spacing</button>
+      <button id="m-sim" onclick="setMode('sim')">Simulation shape (s, spread)</button>
+      <button onclick="randomDelta()">Random</button>
+    </div>
+    <div class="row"><label>s (asymmetry)</label><input type="range" id="s" min="-2.08" max="2.08" step="0.02" value="1.5"><span class="val" id="s-v"></span></div>
+    <div class="row"><label>spread</label><input type="range" id="spread" min="0.5" max="8" step="0.05" value="2.77"><span class="val" id="spread-v"></span></div>
+    <div id="delta-sliders"></div>
+    <div class="note">Grey numbers are the binomial offsets. s and spread follow the simulation DGP (<code>make_thresholds</code>): gaps ∝ exp(s·j/(K−3)), max/min gap ratio e<sup>|s|</sup>, total span = spread; s = 0 is equal spacing. Dragging an individual δ switches to a custom structure.</div>
+  </div>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<div class="grid2">
+  <div class="panel">
+    <div class="panel-title">Category response functions: this structure (solid) vs binomial (dashed)</div>
+    <div class="canvas-wrap"><canvas id="c-crf"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Expected response function: target (grey) vs this structure (blue, dashed)</div>
+    <div class="canvas-wrap"><canvas id="c-erf"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Link η(θ): this structure (solid) vs binomial (dashed); horizontal lines = δ<sub>k</sub></div>
+    <div class="canvas-wrap"><canvas id="c-eta"></canvas></div>
+  </div>
+  <div class="panel">
+    <div class="panel-title" id="bar-title">Category probabilities at θ*</div>
+    <div class="canvas-wrap"><canvas id="c-bar"></canvas></div>
+  </div>
+</div>
+
+<div class="stats">
+  <div>ERF max deviation from target: <strong id="st-erf">—</strong></div>
+  <div>Category KL(this ‖ binomial), avg over θ~N(0,1): <strong id="st-kl">—</strong> nats</div>
+  <div>η(θ) departure from linear (weighted RMSE): <strong id="st-lin">—</strong></div>
+</div>
+<div class="stats" style="margin-top:-6px">
+  <div>Thresholds on θ scale (where η(θ) crosses δ<sub>k</sub>): <strong id="st-th">—</strong></div>
+</div>
+<div class="note">KL is the expected log-loss penalty for predicting categories with the binomial when this structure generates the data: the category-level loss that an ERF criterion such as RMSE cannot see. The ERF deviation is numerical error only.</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="adjcat-solver.js"></script>
+<script>
+const TH = Array.from({ length: 161 }, (_, i) => -4 + i * 0.05);
+const W = (() => { const w = TH.map(t => Math.exp(-t * t / 2)); const s = w.reduce((a, b) => a + b, 0); return w.map(v => v / s); })();
+const PAL = ['#378ADD', '#1D9E75', '#BA7517', '#D85A30', '#7F77DD', '#C2417A', '#5F6B7A'];
+const logis = x => 1 / (1 + Math.exp(-x));
+const $ = id => document.getElementById(id);
+
+let mode = 'sim', delta = [];
+
+function simDelta(K, s, spread) {
+  // Mirrors make_thresholds() in sim/gpcm_binomial_*.R, with total_range = spread.
+  const n = K - 1;
+  if (s === 0 || n <= 2) return Array.from({ length: n }, (_, i) => -spread / 2 + spread * i / (n - 1));
+  let gaps = Array.from({ length: n - 1 }, (_, j) => Math.exp(s * j / (n - 2)));
+  const g = gaps.reduce((a, b) => a + b, 0); gaps = gaps.map(v => v / g * spread);
+  const b = [-spread / 2]; gaps.forEach(v => b.push(b[b.length - 1] + v));
+  return b;
+}
+function binomSpread(K) { const d = binomDelta(K); return d[d.length - 1] - d[0]; }
+
+function buildDeltaSliders() {
+  const K = +$('K').value, bd = binomDelta(K), el = $('delta-sliders');
+  el.innerHTML = '';
+  for (let k = 0; k < K - 1; k++) {
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = `<label><span class="sw" style="background:${PAL[k + 1]};width:8px;height:8px"></span> δ<sub>${k + 1}</sub></label>` +
+      `<input type="range" id="d${k}" min="-5" max="5" step="0.05"><span class="val" id="d${k}-v"></span><span class="ref">${bd[k].toFixed(2)}</span>`;
+    el.appendChild(row);
+    row.querySelector('input').addEventListener('input', e => { delta[k] = +e.target.value; mode = 'custom'; update(); });
+  }
+}
+function syncDeltaSliders() { delta.forEach((v, k) => { const s = $('d' + k); if (s) { s.value = v; $('d' + k + '-v').textContent = v.toFixed(2); } }); }
+function deltaForMode() { const K = +$('K').value; return mode === 'binom' ? binomDelta(K) : simDelta(K, +$('s').value, +$('spread').value); }
+function setMode(m) { mode = m; delta = deltaForMode(); update(); }
+function randomDelta() {
+  const K = +$('K').value;
+  delta = Array.from({ length: K - 1 }, () => Math.round((-3 + 6 * Math.random()) * 20) / 20);
+  mode = 'custom'; update();
+}
+
+const charts = {};
+function chart(id, cfg) { if (charts[id]) charts[id].destroy(); charts[id] = new Chart($(id), cfg); }
+function axes(yLabel, yMin, yMax) {
+  return {
+    animation: false, responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    scales: {
+      x: { type: 'linear', min: -4, max: 4, ticks: { font: { size: 9 }, color: '#888' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: 'θ', font: { size: 10 }, color: '#888' } },
+      y: { min: yMin, max: yMax, ticks: { font: { size: 9 }, color: '#888' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: yLabel, font: { size: 10 }, color: '#888' } }
+    }
+  };
+}
+const line = (ys, col, dash = [], wd = 1.8) => ({ data: TH.map((t, i) => ({ x: t, y: ys[i] })), borderColor: col, borderWidth: wd, pointRadius: 0, borderDash: dash });
+const vrule = (x, lo, hi) => ({ data: [{ x, y: lo }, { x, y: hi }], borderColor: '#bbb', borderWidth: 1, pointRadius: 0, borderDash: [3, 2] });
+
+function update() {
+  const K = +$('K').value, aT = +$('aT').value, bT = +$('bT').value, thS = +$('thStar').value;
+  ['K', 'aT', 'bT', 'thStar', 's', 'spread'].forEach(id => $(id + '-v').textContent = (+$(id).value).toFixed(id === 'K' ? 0 : 2));
+  if (delta.length !== K - 1) { buildDeltaSliders(); if (mode === 'custom') mode = 'sim'; delta = deltaForMode(); }
+  syncDeltaSliders();
+  $('m-binom').classList.toggle('active', mode === 'binom');
+  $('m-sim').classList.toggle('active', mode === 'sim');
+
+  const erf = TH.map(t => (K - 1) * logis(aT * (t - bT)));
+  const cur = acMatchERF(erf, delta), bin = acMatchERF(erf, binomDelta(K));
+  const curERF = cur.probs.map(p => p.reduce((s, v, k) => s + k * v, 0));
+
+  // Stats
+  $('st-erf').textContent = Math.max(...curERF.map((v, i) => Math.abs(v - erf[i]))).toExponential(1);
+  let kl = 0;
+  cur.probs.forEach((p, i) => { let s = 0; p.forEach((v, k) => { if (v > 1e-300) s += v * Math.log(v / Math.max(bin.probs[i][k], 1e-300)); }); kl += W[i] * s; });
+  $('st-kl').textContent = kl.toFixed(4);
+  const mt = TH.reduce((s, t, i) => s + W[i] * t, 0), me = cur.eta.reduce((s, e, i) => s + W[i] * e, 0);
+  const sxy = TH.reduce((s, t, i) => s + W[i] * (t - mt) * (cur.eta[i] - me), 0), sxx = TH.reduce((s, t, i) => s + W[i] * (t - mt) ** 2, 0);
+  const slope = sxy / sxx, lin = Math.sqrt(TH.reduce((s, t, i) => s + W[i] * (cur.eta[i] - me - slope * (t - mt)) ** 2, 0));
+  $('st-lin').textContent = lin.toFixed(3);
+  const thr = delta.map(d => {
+    if (d <= cur.eta[0]) return '<−4'; if (d >= cur.eta[TH.length - 1]) return '>4';
+    for (let i = 1; i < TH.length; i++) if (cur.eta[i] >= d) { const f = (d - cur.eta[i - 1]) / (cur.eta[i] - cur.eta[i - 1]); return (TH[i - 1] + f * 0.05).toFixed(2); }
+  });
+  $('st-th').textContent = thr.map((v, k) => `θ${k + 1} = ${v}`).join(',  ');
+
+  // Legend
+  $('legend').innerHTML = Array.from({ length: K }, (_, k) => `<span><span class="sw" style="background:${PAL[k]}"></span>k=${k}</span>`).join('') +
+    `<span><span class="ln"></span>this structure</span><span><span class="ln dash"></span>binomial</span>`;
+
+  // CRFs
+  const crfSets = [];
+  for (let k = 0; k < K; k++) {
+    crfSets.push(line(cur.probs.map(p => p[k]), PAL[k]));
+    crfSets.push(line(bin.probs.map(p => p[k]), PAL[k], [4, 3], 1.2));
+  }
+  crfSets.push(vrule(thS, 0, 1));
+  chart('c-crf', { type: 'line', data: { datasets: crfSets }, options: axes('P(X=k|θ)', 0, 1) });
+
+  // ERF
+  chart('c-erf', { type: 'line', data: { datasets: [line(erf, '#aaa', [], 3), line(curERF, '#378ADD', [5, 3], 1.5)] }, options: axes('E[X|θ]', 0, K - 1) });
+
+  // Link
+  const etaSets = [line(cur.eta, '#111', [], 2), line(bin.eta, '#999', [4, 3], 1.5)];
+  delta.forEach((d, k) => etaSets.push({ data: [{ x: -4, y: d }, { x: 4, y: d }], borderColor: PAL[k + 1], borderWidth: 1, pointRadius: 0, borderDash: [2, 2] }));
+  const ys = [...cur.eta, ...bin.eta, ...delta], lo = Math.max(Math.min(...ys) - 0.5, -12), hi = Math.min(Math.max(...ys) + 0.5, 12);
+  chart('c-eta', { type: 'line', data: { datasets: etaSets }, options: axes('η(θ)', Math.floor(lo), Math.ceil(hi)) });
+
+  // Bars at θ*
+  const mS = (K - 1) * logis(aT * (thS - bT));
+  const pc = acProbs(acSolveEta(mS, delta), delta), pb = acProbs(acSolveEta(mS, binomDelta(K)), binomDelta(K));
+  $('bar-title').textContent = `Category probabilities at θ* = ${thS.toFixed(2)} (E[X] = ${mS.toFixed(2)} for both): this structure (solid) vs binomial (pale)`;
+  chart('c-bar', {
+    type: 'bar',
+    data: { labels: Array.from({ length: K }, (_, k) => 'k=' + k), datasets: [
+      { data: pc, backgroundColor: PAL.slice(0, K) },
+      { data: pb, backgroundColor: PAL.slice(0, K).map(c => c + '55') }
+    ] },
+    options: { animation: false, responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: true } },
+      scales: { x: { ticks: { font: { size: 9 }, color: '#888' }, grid: { display: false } },
+                y: { min: 0, max: 1, ticks: { font: { size: 9 }, color: '#888' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: 'P(X=k|θ*)', font: { size: 10 }, color: '#888' } } } }
+  });
+}
+
+$('K').addEventListener('input', () => { $('spread').value = binomSpread(+$('K').value).toFixed(2); update(); });
+['aT', 'bT', 'thStar'].forEach(id => $(id).addEventListener('input', update));
+['s', 'spread'].forEach(id => $(id).addEventListener('input', () => setMode('sim')));
+
+$('spread').value = binomSpread(5).toFixed(2);
+buildDeltaSliders();
+setMode('sim');
+</script>
+</body>
+</html>
