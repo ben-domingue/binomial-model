@@ -84,47 +84,7 @@
 
 <ul class="widget-list">
   <li>
-    <a href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
-    <span class="desc">
-      Compare two parameter configurations within the same model (GRM, GPCM, or Binomial) to see
-      when different configurations produce identical or near-identical expected response
-      functions (ERFs) despite different category response functions (CRFs).
-    </span>
-  </li>
-  <li>
-    <a href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
-    <span class="desc">
-      Heatmaps of ERF distance around a reference threshold configuration for the GRM and GPCM,
-      showing how quickly identifiability sharpens or degrades as thresholds move away from the
-      reference.
-    </span>
-  </li>
-  <li>
-    <a href="crf-editor.html">CRF editor</a>
-    <span class="desc">
-      Drag category response curves up or down, seeded from the GRM, GPCM, or Binomial model,
-      while adjacent categories compensate algebraically to keep the expected response function
-      exactly fixed.
-    </span>
-  </li>
-  <li>
-    <a href="fixed-erf-threshold-explorer.html">Fixed-ERF threshold explorer</a>
-    <span class="desc">
-      Hold the expected response function fixed and change the threshold structure: for any set of
-      adjacent-category step offsets, the link is solved so the ERF is unchanged, showing how
-      different the category response functions can be behind an identical ERF.
-    </span>
-  </li>
-  <li>
-    <a href="cross-model-erf-explorer.html">Same ERF, different models</a>
-    <span class="desc">
-      Choose a binomial, GPCM, or GRM as the data-generating model and compare it with the other
-      models that best reproduce its expected response function. Several match it exactly (every
-      GRM ERF is also a GPCM ERF), yet their category probabilities differ.
-    </span>
-  </li>
-  <li>
-    <a href="threshold-structure-explorer.html">Threshold independence: GRM, GPCM, and Binomial</a>
+    <a href="threshold-structure-explorer.html">1. Threshold independence: GRM, GPCM, and Binomial</a>
     <span class="desc">
       Switch between models and drag the threshold sliders to compare how much independent
       control each model has over its category boundaries &mdash; and how the binomial's single
@@ -132,7 +92,39 @@
     </span>
   </li>
   <li>
-    <a href="category-loss-explorer.html">Per-category prediction loss under threshold asymmetry</a>
+    <a href="crf-editor.html">2. CRF editor</a>
+    <span class="desc">
+      Drag category response curves up or down, seeded from the GRM, GPCM, or Binomial model,
+      while adjacent categories compensate algebraically to keep the expected response function
+      exactly fixed.
+    </span>
+  </li>
+  <li>
+    <a href="isoerf-manifold-explorer.html">3. isoERF manifold explorer</a>
+    <span class="desc">
+      Heatmaps of ERF distance around a reference threshold configuration for the GRM and GPCM,
+      showing how quickly identifiability sharpens or degrades as thresholds move away from the
+      reference.
+    </span>
+  </li>
+  <li>
+    <a href="cross-model-erf-explorer.html">4. Same ERF, different models</a>
+    <span class="desc">
+      Choose a binomial, GPCM, or GRM as the data-generating model and compare it with the other
+      models that best reproduce its expected response function. Several match it exactly (every
+      GRM ERF is also a GPCM ERF), yet their category probabilities differ.
+    </span>
+  </li>
+  <li>
+    <a href="fixed-erf-threshold-explorer.html">5. Fixed-ERF threshold explorer</a>
+    <span class="desc">
+      Hold the expected response function fixed and change the threshold structure: for any set of
+      adjacent-category step offsets, the link is solved so the ERF is unchanged, showing how
+      different the category response functions can be behind an identical ERF.
+    </span>
+  </li>
+  <li>
+    <a href="category-loss-explorer.html">6. Category loss and KL decomposition</a>
     <span class="desc">
       Adjust ability, threshold asymmetry, number of categories, and discrimination to see where
       a binomial approximation's category-level prediction loss concentrates, even when its

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CRF Editor</title>
+<link rel="stylesheet" href="site.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:16px 20px}
@@ -43,22 +44,16 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
 
 <div class="page-header">
   <a class="back-home" href="index.html">← Back to home</a>
-  <h1>CRF Editor</h1>
+  <h1>Widget 2: CRF Editor</h1>
   <p>Drag any category response curve up or down, seeded from the GRM, GPCM, or Binomial model. Adjacent categories compensate algebraically to keep the expected response function exactly fixed.</p>
 </div>
 
-<nav class="related-nav">
-  <a href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
-  <a href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
-  <a class="current" href="crf-editor.html">CRF editor</a>
-  <a href="fixed-erf-threshold-explorer.html">Fixed-ERF threshold explorer</a>
-  <a href="cross-model-erf-explorer.html">Same ERF, different models</a>
-</nav>
+<nav class="related-nav" id="site-nav"></nav>
 
 <div class="widget" id="main-widget">
 
 <div class="drag-desc">
-  Each curve is a category response function P(X=k|θ) for the model seeded above. <strong>Click and drag any curve up or down</strong> — the editor automatically shifts two other categories in the opposite direction at that θ so total probability stays at 1 and the expected response function (right panel, dashed = original) stays exactly fixed. This is a hands-on way to explore the <a href="isoerf-degeneracy-explorer.html" style="color:#378ADD">isoERF set</a>: every curve you can reach by dragging has a different CRF but an identical ERF to the seed. Try pulling one category up in the middle of the θ range and watch the others compensate, or hit <strong>Randomize</strong> to jump to an unrelated point on the same isoERF fiber (random adjacent-category step offsets, with the link solved at each θ so the ERF is unchanged; see the <a href="fixed-erf-threshold-explorer.html" style="color:#378ADD">fixed-ERF threshold explorer</a>). If a fast or imprecise drag leaves the curve jagged, <strong>Smooth active curve</strong> smooths whichever category you last edited using the same probability-preserving mechanism, so the ERF stays locked.
+  Each curve is a category response function P(X=k|θ) for the model seeded above. <strong>Click and drag any curve up or down</strong> — the editor automatically shifts two other categories in the opposite direction at that θ so total probability stays at 1 and the expected response function (right panel, dashed = original) stays exactly fixed. This is a hands-on way to explore the <a href="isoerf-manifold-explorer.html" style="color:#378ADD">isoERF set</a>: every curve you can reach by dragging has a different CRF but an identical ERF to the seed. Try pulling one category up in the middle of the θ range and watch the others compensate, or hit <strong>Randomize</strong> to jump to an unrelated point on the same isoERF fiber (random adjacent-category step offsets, with the link solved at each θ so the ERF is unchanged; see the <a href="fixed-erf-threshold-explorer.html" style="color:#378ADD">fixed-ERF threshold explorer</a>). If a fast or imprecise drag leaves the curve jagged, <strong>Smooth active curve</strong> smooths whichever category you last edited using the same probability-preserving mechanism, so the ERF stays locked.
 </div>
 <div class="drag-model-toggle">
   <button class="active" onclick="setDragModel('grm',this)">Seed from GRM</button>
@@ -171,5 +166,6 @@ function smoothActive() {
 
 seedDrag(); buildDragLegend(); initDragCanvas(); renderDrag();
 </script>
+<script src="nav.js"></script>
 </body>
 </html>

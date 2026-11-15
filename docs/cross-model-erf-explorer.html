@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Same ERF, Different Models</title>
+<link rel="stylesheet" href="site.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:16px 20px}
@@ -57,17 +58,11 @@ table.cmp tr.sel td{background:#f0f0f0;color:#111;font-weight:500}
 
 <div class="page-header">
   <a class="back-home" href="index.html">← Back to home</a>
-  <h1>Same ERF, Different Models</h1>
+  <h1>Widget 4: Same ERF, Different Models</h1>
   <p>Pick a target model, which plays the role of the data-generating model. The page finds the binomial, GPCM, and GRM that best reproduce its expected response function, then shows how differently each one spreads probability across categories.</p>
 </div>
 
-<nav class="related-nav">
-  <a href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
-  <a href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
-  <a href="crf-editor.html">CRF editor</a>
-  <a href="fixed-erf-threshold-explorer.html">Fixed-ERF threshold explorer</a>
-  <a class="current" href="cross-model-erf-explorer.html">Same ERF, different models</a>
-</nav>
+<nav class="related-nav" id="site-nav"></nav>
 
 <div class="widget">
 
@@ -324,5 +319,6 @@ function update() {
 ['K', 'aT', 'bT', 'sT', 'spreadT', 'thStar'].forEach(id => $(id).addEventListener('input', schedule));
 update();
 </script>
+<script src="nav.js"></script>
 </body>
 </html>

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Fixed-ERF Threshold Explorer</title>
+<link rel="stylesheet" href="site.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:16px 20px}
@@ -52,17 +53,11 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
 
 <div class="page-header">
   <a class="back-home" href="index.html">← Back to home</a>
-  <h1>Fixed-ERF Threshold Explorer</h1>
+  <h1>Widget 5: Fixed-ERF Threshold Explorer</h1>
   <p>Hold the expected response function fixed and change the threshold structure. Every configuration has exactly the same ERF as the binomial target; only the way probability is spread across categories changes.</p>
 </div>
 
-<nav class="related-nav">
-  <a href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
-  <a href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
-  <a href="crf-editor.html">CRF editor</a>
-  <a class="current" href="fixed-erf-threshold-explorer.html">Fixed-ERF threshold explorer</a>
-  <a href="cross-model-erf-explorer.html">Same ERF, different models</a>
-</nav>
+<nav class="related-nav" id="site-nav"></nav>
 
 <div class="widget">
 
@@ -256,5 +251,6 @@ $('spread').value = binomSpread(5).toFixed(2);
 buildDeltaSliders();
 setMode('sim');
 </script>
+<script src="nav.js"></script>
 </body>
 </html>

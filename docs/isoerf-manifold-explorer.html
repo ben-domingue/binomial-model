@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>isoERF Manifold Explorer</title>
+<link rel="stylesheet" href="site.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a;background:#fff;padding:16px 20px}
@@ -42,17 +43,11 @@ body{font-family:system-ui,-apple-system,sans-serif;font-size:13px;color:#1a1a1a
 
 <div class="page-header">
   <a class="back-home" href="index.html">← Back to home</a>
-  <h1>isoERF Manifold Explorer</h1>
+  <h1>Widget 3: isoERF Manifold Explorer</h1>
   <p>Explore the near-isoERF neighborhood around a reference threshold configuration for the GRM and GPCM: how quickly ERF distance grows as thresholds move away from the reference, and what that means for identifiability.</p>
 </div>
 
-<nav class="related-nav">
-  <a href="isoerf-degeneracy-explorer.html">isoERF degeneracy explorer</a>
-  <a class="current" href="isoerf-manifold-explorer.html">isoERF manifold explorer</a>
-  <a href="crf-editor.html">CRF editor</a>
-  <a href="fixed-erf-threshold-explorer.html">Fixed-ERF threshold explorer</a>
-  <a href="cross-model-erf-explorer.html">Same ERF, different models</a>
-</nav>
+<nav class="related-nav" id="site-nav"></nav>
 
 <div class="widget" id="main-widget">
 
@@ -278,5 +273,6 @@ if (initialModel === 'gpcm') {
 if (initialModel === 'grm') { grmState.inited = true; initGrmManifold(); grmFullRender(); }
 else { gpcmMfState.inited = true; initGpcmManifold(); gpcmMfFullRender(); }
 </script>
+<script src="nav.js"></script>
 </body>
 </html>
