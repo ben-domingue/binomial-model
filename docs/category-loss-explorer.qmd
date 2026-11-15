@@ -202,19 +202,27 @@ contribPlot = Plot.plot({
   ]
 })
 
+// Toggle rendered inside the layout below (element + generator, so it is not shown at this cell)
+klModeInput = Inputs.radio(["KL at each θ", "Weighted by N(0,1) density"], {value: "KL at each θ"})
+klMode = Generators.input(klModeInput)
+
 klPlot = {
+  // Unstacked lines, so each curve reads directly off the y-axis. In weighted mode each curve is
+  // multiplied by the N(0,1) density, so the area under it equals its "avg over θ" value in the table.
+  const wt = klMode === "KL at each θ" ? (() => 1) : (th => Math.exp(-th * th / 2) / Math.sqrt(2 * Math.PI));
   const rows = gridData.flatMap(d => [
-    {th: d.th, v: d.structural, part: "Structural"},
-    {th: d.th, v: d.link, part: "Link"}
+    {th: d.th, v: d.structural * wt(d.th), part: "Structural"},
+    {th: d.th, v: d.link * wt(d.th), part: "Link"},
+    {th: d.th, v: d.total * wt(d.th), part: "Total"}
   ]);
   return Plot.plot({
     width: 340, height: 220, marginLeft: 50,
     x: {label: "θ", tickValues: [-2,-1,0,1,2]},
-    y: {label: "KL(GPCM ‖ Binom 2PL), nats", grid: true},
-    color: {domain: ["Structural", "Link"], range: [COMP_COLOR, B2_COLOR], legend: true},
+    y: {label: klMode === "KL at each θ" ? "KL, nats" : "KL × N(0,1) density", grid: true},
+    color: {domain: ["Structural", "Link", "Total"], range: [COMP_COLOR, B2_COLOR, "#333"], legend: true},
     marks: [
-      Plot.areaY(rows, {x: "th", y: "v", fill: "part", fillOpacity: 0.55}),
-      Plot.line(gridData, {x: "th", y: "total", stroke: "#333", strokeWidth: 1.5}),
+      Plot.line(rows.filter(r => r.part !== "Total"), {x: "th", y: "v", stroke: "part", strokeWidth: 2}),
+      Plot.line(rows.filter(r => r.part === "Total"), {x: "th", y: "v", stroke: "part", strokeWidth: 1.2, strokeDasharray: "4,3"}),
       Plot.ruleX([theta], {stroke: "#888", strokeDasharray: "3,2", strokeWidth: 1.2}),
       Plot.ruleY([0])
     ]
@@ -258,8 +266,11 @@ html`<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; alig
 <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start; margin-top:28px;">
   <div>
     <p style="font-size:0.8em;font-weight:500;color:#555;margin:0 0 4px;">Decomposition of the Binom 2PL's KL divergence across θ</p>
+    ${klModeInput}
     ${klPlot}
-    <p style="font-size:0.75em;color:#777;margin:4px 0 0;">Stacked: structural (loss of the mean-matched binomial) + link ((K−1)·KL between Bernoulli(f*) and Bernoulli(f)). Black line = total KL(GPCM ‖ Binom 2PL); it equals the sum exactly.</p>
+    <p style="font-size:0.75em;color:#777;margin:4px 0 0;">Structural = loss of the mean-matched binomial; link = (K−1)·KL between Bernoulli(f*) and Bernoulli(f); total (dashed) = KL(GPCM ‖ Binom 2PL) = structural + link exactly. Each curve is drawn from zero. ${klMode === "KL at each θ"
+      ? "Unweighted: large values in the tails can matter little to the average, because few abilities lie there."
+      : "Weighted: the area under each curve equals its “avg over θ ~ N(0,1)” value in the table."}</p>
   </div>
   <div>
     <p style="font-size:0.8em;font-weight:500;color:#555;margin:0 0 4px;">Decomposition, nats per response</p>
