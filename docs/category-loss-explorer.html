@@ -11,13 +11,13 @@
 .theta-bar{position:sticky;top:0;z-index:5;background:#fff;padding:8px 0 6px;margin-bottom:6px;border-bottom:0.5px solid #e0e0e0}
 .theta-bar .row{margin:0}
 @media (max-width:640px){.lr{grid-template-columns:1fr}}
-table.dec{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+table.dec{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
 table.dec td{padding:4px 4px;border-bottom:0.5px solid #f0f0f0}
 table.dec td.num{text-align:right}
-table.dec tr.head td{color:#888;border-bottom:1px solid #e0e0e0}
+table.dec tr.head td{color:#666;border-bottom:1px solid #e0e0e0}
 table.dec tr.tot td{border-top:1px solid #e0e0e0}
 table.dec tr.share td{font-weight:600;color:#111}
-.radio{display:flex;gap:10px;font-size:11px;color:#555;margin-bottom:6px;flex-wrap:wrap}
+.radio{display:flex;gap:10px;font-size:13px;color:#555;margin-bottom:6px;flex-wrap:wrap}
 .radio label{display:flex;align-items:center;gap:4px;cursor:pointer}
 </style>
 </head>
@@ -81,7 +81,7 @@ table.dec tr.share td{font-weight:600;color:#111}
   <div class="panel">
     <div class="panel-title" id="crf-title">Category response functions</div>
     <div class="radio">
-      <span style="color:#888">Dashed curves:</span>
+      <span style="color:#666">Dashed curves:</span>
       <label><input type="radio" name="crfmode" value="mm" checked> Mean-matched binomial</label>
       <label><input type="radio" name="crfmode" value="b2"> Binom 2PL</label>
     </div>
@@ -110,7 +110,7 @@ table.dec tr.share td{font-weight:600;color:#111}
       <tr><td>Link</td><td class="num" id="d-lm"></td><td class="num" id="d-lb"></td></tr>
       <tr class="tot"><td>Total</td><td class="num" id="d-tm"></td><td class="num" id="d-tb"></td></tr>
     </table>
-    <div style="font-size:12px;margin:8px 0 2px;color:#111">Structural share of the Binom 2PL’s loss: <strong id="d-share"></strong></div>
+    <div style="font-size:14px;margin:8px 0 2px;color:#111">Structural share of the Binom 2PL’s loss: <strong id="d-share"></strong></div>
     <div class="note">The share is the ratio of the two totals, mean-matched ÷ Binom 2PL. Because the mean-matched binomial’s whole loss is the structural term, and the Binom 2PL’s total is structural + link, this ratio is exactly the structural proportion reported in the manuscript’s table, here for one noiseless item rather than averaged over 200 items (86–96% under the GPCM DGP).</div>
     <div class="note" id="d-at"></div>
     <div class="note" id="id-check"></div>
@@ -209,9 +209,9 @@ function opts(yLabel, yMin, yMax, xLinear = true) {
   return { animation: false, responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false }, tooltip: { enabled: false } },
     scales: {
-      x: xLinear ? { type: 'linear', min: -3, max: 3, ticks: { font: { size: 9 }, color: '#888' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: 'θ', font: { size: 10 }, color: '#888' } }
-                 : { ticks: { font: { size: 9 }, color: '#888' }, grid: { display: false } },
-      y: { min: yMin, max: yMax, afterFit: sc => { sc.width = 56; }, ticks: { font: { size: 9 }, color: '#888' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: yLabel, font: { size: 10 }, color: '#888' } } } };
+      x: xLinear ? { type: 'linear', min: -3, max: 3, ticks: { font: { size: 11 }, color: '#666' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: 'θ', font: { size: 12 }, color: '#666' } }
+                 : { ticks: { font: { size: 11 }, color: '#666' }, grid: { display: false } },
+      y: { min: yMin, max: yMax, afterFit: sc => { sc.width = 56; }, ticks: { font: { size: 11 }, color: '#666' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: yLabel, font: { size: 12 }, color: '#666' } } } };
 }
 const line = (ys, col, dash = [], wd = 1.8) => ({ data: PLOT.map((t, i) => ({ x: t, y: ys[i] })), borderColor: col, borderWidth: wd, pointRadius: 0, borderDash: dash });
 const vrule = (x, lo, hi) => ({ data: [{ x, y: lo }, { x, y: hi }], borderColor: '#bbb', borderWidth: 1, pointRadius: 0, borderDash: [3, 2] });

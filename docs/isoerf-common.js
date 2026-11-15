@@ -80,8 +80,8 @@ const baseOpts = (yLabel, yMax = 1) => ({
     animation: false, responsive: true, maintainAspectRatio: false,
     plugins: { legend: { display: false }, tooltip: { enabled: false } },
     scales: {
-      x: { type: 'linear', min: -3.5, max: 3.5, ticks: { font: { size: 9 }, color: '#888', callback: v => Number.isInteger(v) ? v : null }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: 'θ', font: { size: 10 }, color: '#888' } },
-      y: { min: 0, max: yMax, ticks: { font: { size: 9 }, color: '#888' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: yLabel, font: { size: 10 }, color: '#888' } }
+      x: { type: 'linear', min: -3.5, max: 3.5, ticks: { font: { size: 11 }, color: '#666', callback: v => Number.isInteger(v) ? v : null }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: 'θ', font: { size: 12 }, color: '#666' } },
+      y: { min: 0, max: yMax, ticks: { font: { size: 11 }, color: '#666' }, grid: { color: 'rgba(128,128,128,0.1)' }, title: { display: true, text: yLabel, font: { size: 12 }, color: '#666' } }
     }
   }
 });
@@ -200,7 +200,7 @@ function drawBaseHeatmap(ctx, W, H, grid, admissibleFn) {
   ctx.strokeStyle = COL_B; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
   strokeSegs(ctx, marchingSquares(grid, W, H, thresh, cellOk));
   ctx.setLineDash([]);
-  ctx.font = '10px sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.fillStyle = 'rgba(55,55,55,0.9)';
+  ctx.font = '12px sans-serif'; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.fillStyle = 'rgba(55,55,55,0.9)';
   ctx.strokeText('b₁ →', W / 2 - 14, H - 3); ctx.fillText('b₁ →', W / 2 - 14, H - 3);
   ctx.save(); ctx.translate(8, H / 2 + 12); ctx.rotate(-Math.PI / 2);
   ctx.strokeText('b₂ →', 0, 0); ctx.fillText('b₂ →', 0, 0); ctx.restore();
